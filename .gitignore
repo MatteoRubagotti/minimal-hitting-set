@@ -104,3 +104,6 @@ fabric.properties
 *.iml
 out
 gen
+
+# MacOS
+.DS_Store
