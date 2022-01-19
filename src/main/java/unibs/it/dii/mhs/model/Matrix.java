@@ -4,6 +4,14 @@ public class Matrix {
     private int[][] intMatrix;
     private String fileName;
 
+    public Matrix() {
+
+    }
+
+    public Matrix(int[][] matrix) {
+        this.intMatrix = matrix;
+    }
+
     public int[][] getIntMatrix() {
         return intMatrix;
     }

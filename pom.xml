@@ -13,6 +13,44 @@
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>
+                                ${project.build.directory}/libs
+                            </outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>libs/</classpathPrefix>
+                            <mainClass>
+                                unibs.it.dii.mhs.MinimalHittingSet
+                            </mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <dependencies>
         <!-- https://mvnrepository.com/artifact/com.beust/jcommander -->
         <dependency>
@@ -20,6 +58,21 @@
             <artifactId>jcommander</artifactId>
             <version>1.78</version>
         </dependency>
+
+<!--        <dependency>-->
+<!--            <groupId>org.agrona</groupId>-->
+<!--            <artifactId>agrona</artifactId>-->
+<!--            <version>1.14.0</version>-->
+<!--        </dependency>-->
     </dependencies>
+
+    <repositories>
+
+        <repository>
+            <id>github.release.repo</id>
+            <url>https://raw.github.com/bulldog2011/bulldog-repo/master/repo/releases/</url>
+        </repository>
+
+    </repositories>
 
 </project>

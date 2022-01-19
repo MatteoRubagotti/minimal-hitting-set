@@ -1,0 +1,12 @@
+;;; Example on slides
+;;;
+;;; Error status nil
+;;; Injected fault
+;;;
+1 1 1 0 0 0 -
+0 1 1 1 0 1 -
+0 1 1 0 0 0 -
+1 0 1 0 0 1 -
+1 1 1 1 0 0 -
+0 1 1 1 0 1 -
+0 0 1 1 0 0 -

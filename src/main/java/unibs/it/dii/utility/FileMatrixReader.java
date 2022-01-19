@@ -21,18 +21,19 @@ public class FileMatrixReader {
 
             matrix.setIntMatrix(intMatrix);
         }
+
         return matrix;
     }
 
     private int[] readRow(String s) {
         final String[] split = s.split(" ");
-        int[] array = new int[split.length - 1];
+        int[] row = new int[split.length - 1];
         int count = 0;
 
-        for (int j = 0; j < array.length; j++) {
-            array[count++] = Integer.parseInt(split[j]);
+        for (int j = 0; j < row.length; j++) {
+            row[count++] = Integer.parseInt(split[j]);
         }
 
-        return array;
+        return row;
     }
 }

@@ -6,11 +6,10 @@ import unibs.it.dii.utility.Args;
 import unibs.it.dii.utility.FileMatrixReader;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 
 public class MinimalHittingSet {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         final Args arguments = new Args();
         JCommander.newBuilder()
                 .addObject(arguments)
@@ -20,35 +19,46 @@ public class MinimalHittingSet {
         MinimalHittingSet main = new MinimalHittingSet();
         main.run(arguments);
 
-        /*final String PATH = ".src/main/java/unibs/it/dii/benchmarks/74L85.000.matrix";
-        final File file = new File(PATH);*/
-
     }
 
-    /*private void run() {
-
-    }*/
-
-    public void run(Args arguments) throws IOException {
+    public void run(Args arguments) throws Exception {
+        final boolean debugMode = true;
+        final MinimalHittingSetSolver solver = new MinimalHittingSetSolver(debugMode);
         Path inputPath = arguments.getInputPath();
         final File file = inputPath.toFile();
         //System.out.println(file.getName());
 
         final FileMatrixReader reader = new FileMatrixReader();
-        final Matrix matrix = reader.readMatrixFromFile(file);
+        final Matrix inputMatrix = reader.readMatrixFromFile(file);
+        final Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix);
 
-        String matrixName = matrix.getFileName();
-        System.out.println("Matrix name: " + matrixName);
+        String inputMatrixName = inputMatrix.getFileName();
+        System.out.println("Input File: " + inputMatrixName);
 
-        int[][] intMatrix = matrix.getIntMatrix();
-        System.out.println("Matrix:");
+        int[][] inputIntMatrix = inputMatrix.getIntMatrix();
+        System.out.println("Input Matrix:");
 
-        for (int[] intCol : intMatrix) {
-            for (int j = 0; j < intMatrix[0].length; j++) {
+        for (int[] intCol : inputIntMatrix) {
+            for (int j = 0; j < inputIntMatrix[0].length; j++) {
                 System.out.print(intCol[j] + " "); // Print each row of the matrix
             }
             System.out.println("-"); // Print the end of a row
         }
+
+        String outputMatrixName = outputMatrix.getFileName();
+        System.out.println("Output File name: " + outputMatrixName);
+
+        int[][] outputIntMatrix = outputMatrix.getIntMatrix();
+        System.out.println("Output Matrix:");
+
+        for (int[] intCol : outputIntMatrix) {
+            for (int j = 0; j < outputIntMatrix[0].length; j++) {
+                System.out.print(intCol[j] + " "); // Print each row of the matrix
+            }
+            System.out.println("-"); // Print the end of a row
+        }
+
+        System.out.println("Number of MHS found: " + outputIntMatrix.length);
     }
 
 }
