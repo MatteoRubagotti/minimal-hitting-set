@@ -6,12 +6,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.stream.Stream;
+import org.apache.commons.io.FilenameUtils;
 
 public class FileMatrixReader {
 
     public Matrix readMatrixFromFile(File file) throws IOException {
         final Matrix matrix = new Matrix();
-        matrix.setFileName(file.getName());
+        matrix.setFileName(FilenameUtils.removeExtension(file.getName()));
 
         try (Stream<String> stream = Files.lines(file.toPath())) {
             final int[][] intMatrix = stream

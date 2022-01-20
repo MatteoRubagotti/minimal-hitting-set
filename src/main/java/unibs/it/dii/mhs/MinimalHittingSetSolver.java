@@ -13,21 +13,34 @@ public class MinimalHittingSetSolver {
 
     private boolean debugMode;
 
+    public boolean isOutOfTime() {
+        return outOfTime;
+    }
+
+    public void setOutOfTime(boolean outOfTime) {
+        this.outOfTime = outOfTime;
+    }
+
+    private boolean outOfTime = false;
+
     public MinimalHittingSetSolver(boolean debugMode) {
         this.debugMode = debugMode;
     }
 
     final static private String MSG_EXCEPTION_GET_FIRST_ELEMENT = "ATTENTION! Something went wrong with getFirstElement (i.e. get the first lexicographical element available)";
     final static private String MSG_EXCEPTION_CHECK_MODULE = "ATTENTION! Something went wrong with checkModule";
-    final static private String LINE = "----------------------------------------------------------------------------------------------------------------------------";
-    final static private String DOUBLE_LINE = "============================================================================================================================";
+    final static private String LINE = "-------------------------------------------------------------------------------------------------------------------------";
+    final static private String DOUBLE_LINE = "=========================================================================================================================";
 
-    public Matrix computeMinimalHittingSets(Matrix matrix) throws Exception {
+    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout) throws Exception {
         final Matrix mhsMatrix = new Matrix(); // Output matrix
         final OutputMatrixBuilder outputMatrixBuilder = new OutputMatrixBuilder();
         final int[][] inputIntMatrix = matrix.getIntMatrix();
-        ArrayList<int[]> mhsList = solve(inputIntMatrix); // List of all MHS found
-        int[][] mhsIntMatrix = outputMatrixBuilder.getMHSOutputMatrix(mhsList, inputIntMatrix[0].length);
+        ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout); // List of all MHS found
+        int[][] mhsIntMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputIntMatrix[0].length);
+
+        if(outOfTime)
+            printMHSFoundUpToTimeout(mhsList);
 
         if (debugMode)
             System.out.println("Number of MHS found: " + mhsList.size());
@@ -38,21 +51,35 @@ public class MinimalHittingSetSolver {
         return mhsMatrix;
     }
 
+    private void printMHSFoundUpToTimeout(ArrayList<int[]> mhsList) {
+        for (int i = 0; i < mhsList.size(); i++) {
+            int [] mhs = mhsList.get(i);
+            for (int j = 0; j < mhs.length; j++) {
+                System.out.print(mhs[j] + " ");
+            }
+            System.out.println("-");
+        }
+
+        System.exit(0);
+    }
+
     /**
      * MBase procedure
      *
      * @param intMatrix input matrix from benchmark file (e.g. ####.####.matrix)
+     * @param timeout
      * @return matrix with M columns and X rows, where X is the number of MHS found
      */
-    private ArrayList<int[]> solve(int[][] intMatrix) throws Exception {
+    private ArrayList<int[]> solve(int[][] intMatrix, long timeout) throws Exception {
         final int cols = intMatrix[0].length; // M = number of columns
         final int rows = intMatrix.length; // N = number of rows
         final ArrayList<int[]> mhsList = new ArrayList<>();
         final Queue<int[]> queue = new LinkedList<>();
 
         queue.add(new int[cols]); // Add empty vector [0 0 ... 0]
+        long startTime = System.currentTimeMillis();
 
-        while (!queue.isEmpty()) {
+        while (!queue.isEmpty() && (System.currentTimeMillis() - startTime) <= timeout) {
             int[] e = queue.poll();
 
             if (debugMode) {
@@ -90,6 +117,15 @@ public class MinimalHittingSetSolver {
                     System.out.println(DOUBLE_LINE);
             }
 
+        }
+
+        long endTime = System.currentTimeMillis();
+
+        if ((endTime - startTime) > timeout) {
+            outOfTime = true;
+            queue.clear();
+//            System.out.println("queue isEmpty: " + queue.isEmpty());
+            System.out.println("#MHS = " + mhsList.size());
         }
 
         return mhsList;
@@ -165,6 +201,7 @@ public class MinimalHittingSetSolver {
             if (elementsFound.contains(elements.get(i)))
                 continue;
             rvFullProjected = false;
+            break;
         }
 
         if (debugMode)
@@ -192,10 +229,6 @@ public class MinimalHittingSetSolver {
     private int[] getRepresentativeVector(SubMatrix subMatrix) throws Exception {
         int[][] intSubMatrix = subMatrix.getIntMatrix();
         int[] rv = new int[intSubMatrix.length];
-
-        //debug
-        //System.out.println(Arrays.toString(rv));
-
 
         for (int j = 0; j < intSubMatrix[0].length; j++) { // j = cols
             for (int i = 0; i < intSubMatrix.length; i++) { // i = rows

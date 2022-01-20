@@ -29,8 +29,10 @@ where ```username``` is your GitHub username.
 1. Open a ```Terminal``` window
 2. `cd pathToProject/minimal-hitting-set/target/`
  
-\
-Syntax:`java -jar minimal-hitting-set-maven-project-1.0.jar -in pathToInputMatrix`
+#### Syntax
+```console
+java -jar minimal-hitting-set-maven-project-1.0.jar -in pathToInputMatrix
+```
 
 
 
