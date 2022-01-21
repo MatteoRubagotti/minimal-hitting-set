@@ -8,20 +8,35 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.Integer.min;
+import static unibs.it.dii.mhs.MinimalHittingSet.bytesToMegaBytes;
 
 public class MinimalHittingSetSolver {
 
     private boolean debugMode;
+    private boolean outOfTime = false;
+    private boolean outOfMemory = false;
+    private long minCardinality = 0;
+    private long maxCardinality = 0;
+
+    public long getMinCardinality() {
+        return minCardinality;
+    }
+
+    public long getMaxCardinality() {
+        return maxCardinality;
+    }
 
     public boolean isOutOfTime() {
         return outOfTime;
     }
 
+    public boolean isOutOfMemory() {
+        return outOfMemory;
+    }
+
     public void setOutOfTime(boolean outOfTime) {
         this.outOfTime = outOfTime;
     }
-
-    private boolean outOfTime = false;
 
     public MinimalHittingSetSolver(boolean debugMode) {
         this.debugMode = debugMode;
@@ -32,42 +47,83 @@ public class MinimalHittingSetSolver {
     final static private String LINE = "-------------------------------------------------------------------------------------------------------------------------";
     final static private String DOUBLE_LINE = "=========================================================================================================================";
 
-    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout) throws Exception {
+    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime) throws Exception {
         final Matrix mhsMatrix = new Matrix(); // Output matrix
         final OutputMatrixBuilder outputMatrixBuilder = new OutputMatrixBuilder();
         final int[][] inputIntMatrix = matrix.getIntMatrix();
+
         ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout); // List of all MHS found
+        minCardinality = checkMinCardinality(mhsList.get(0));
+        maxCardinality = checkMaxCardinality(mhsList.get(mhsList.size() - 1));
+
         int[][] mhsIntMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputIntMatrix[0].length);
 
-        if(outOfTime)
-            printMHSFoundUpToTimeout(mhsList);
+        if (outOfTime) {
+            try {
+                calculateUsedMemory(runtime, "Used memory after MBase execution:");
+                printMHSFoundUpToTimeout(mhsList, timeout);
+            } catch (OutOfMemoryError me) {
+                System.err.println(me.getMessage());
+            }
+        }
 
-        if (debugMode)
-            System.out.println("Number of MHS found: " + mhsList.size());
+        if (outOfMemory) {
+            try {
+                calculateUsedMemory(runtime, "Used memory after MBase execution:");
+                printMHSFoundUpToOutOfMemory(mhsList);
+            } catch (OutOfMemoryError me) {
+                System.err.println(me.getMessage());
+            }
+        }
 
-        mhsMatrix.setFileName(matrix.getFileName() + ".out");
+        mhsMatrix.setFileName(matrix.getFileName());
         mhsMatrix.setIntMatrix(mhsIntMatrix);
 
         return mhsMatrix;
     }
 
-    private void printMHSFoundUpToTimeout(ArrayList<int[]> mhsList) {
-        for (int i = 0; i < mhsList.size(); i++) {
-            int [] mhs = mhsList.get(i);
-            for (int j = 0; j < mhs.length; j++) {
-                System.out.print(mhs[j] + " ");
-            }
-            System.out.println("-");
-        }
+    private long checkMaxCardinality(int[] e) {
+        return Arrays.stream(e).filter(i -> i == 1).count();
+    }
 
+    private long checkMinCardinality(int[] e) {
+        return Arrays.stream(e).filter(i -> i == 1).count();
+    }
+
+    private void printMHSFoundUpToOutOfMemory(ArrayList<int[]> mhsList) {
+
+        System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
+        System.out.println("Minimum cardinality: " + minCardinality + "\nMaximum cardinality: " + maxCardinality);
+    }
+
+    private void printMHSFoundUpToTimeout(ArrayList<int[]> mhsList, long timeout) {
+//        for (int i = 0; i < mhsList.size(); i++) {
+//            int[] mhs = mhsList.get(i);
+//            for (int j = 0; j < mhs.length; j++) {
+//                System.out.print(mhs[j] + " ");
+//            }
+//            System.out.println("-");
+//        }
+
+        // TODO -> write on csv and create the ####.####.out
+
+        System.out.println("Execution interrupted > Cause: OUT OF TIME");
+        System.out.println("Number of MHS found (in " + timeout + " ms)" + ": " + mhsList.size());
+        System.out.println("Minimum cardinality: " + minCardinality + "\nMaximum cardinality: " + maxCardinality);
         System.exit(0);
+    }
+
+    private void calculateUsedMemory(Runtime runtime, String s) {
+        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+//            System.out.println(s + memoryAfter + "bytes");
+        System.out.println(s + bytesToMegaBytes(memoryAfter) + "MB");
     }
 
     /**
      * MBase procedure
      *
      * @param intMatrix input matrix from benchmark file (e.g. ####.####.matrix)
-     * @param timeout
+     * @param timeout   maximum time limit
      * @return matrix with M columns and X rows, where X is the number of MHS found
      */
     private ArrayList<int[]> solve(int[][] intMatrix, long timeout) throws Exception {
@@ -79,6 +135,7 @@ public class MinimalHittingSetSolver {
         queue.add(new int[cols]); // Add empty vector [0 0 ... 0]
         long startTime = System.currentTimeMillis();
 
+        whileLoop:
         while (!queue.isEmpty() && (System.currentTimeMillis() - startTime) <= timeout) {
             int[] e = queue.poll();
 
@@ -87,34 +144,47 @@ public class MinimalHittingSetSolver {
                 System.out.println("succ: " + getSucc(getMax(e), cols));
             }
 
-            for (int i = getSucc(getMax(e), cols); i < cols; i++) {
-                int[] newE = Arrays.copyOf(e, e.length);
-                newE[i] = 1;
+            for (int i = getSucc(getMax(e), cols); i < cols && (System.currentTimeMillis() - startTime) <= timeout; i++) {
+                try {
+                    int[] newE = Arrays.copyOf(e, e.length);
+                    newE[i] = 1;
 
-                if (debugMode)
-                    System.out.println("e: " + Arrays.toString(newE));
+                    if (debugMode)
+                        System.out.println("e: " + Arrays.toString(newE));
 
-                SubMatrix subMatrix = getSubMatrix(newE, intMatrix);
+                    SubMatrix subMatrix = getSubMatrix(newE, intMatrix);
 
-                if (debugMode)
-                    System.out.println(subMatrix.toString());
+                    if (debugMode)
+                        System.out.println(subMatrix.toString());
 
-                final int[] rv = getRepresentativeVector(subMatrix);
-                int result = checkModule(rv, subMatrix.getElements());
+                    final int[] rv = getRepresentativeVector(subMatrix);
+                    int result = checkModule(rv, subMatrix.getElements());
 
-                if (debugMode) {
-                    System.out.println("RV" + i + ": " + Arrays.toString(rv));
-                    System.out.println("Result: " + (result == 2 ? "MHS" : (result == 1 ? "OK" : "KO")));
+                    if (debugMode) {
+                        System.out.println("RV" + i + ": " + Arrays.toString(rv));
+                        System.out.println("Result: " + (result == 2 ? "MHS" : (result == 1 ? "OK" : "KO")));
+                    }
+
+                    if (result == 1 && i < cols - 1) // OK && NOT(last lexicographical element)
+                        queue.add(newE);
+
+                    if (result == 2) // MHS
+                        mhsList.add(newE);
+
+                    if (debugMode)
+                        System.out.println(DOUBLE_LINE);
+                } catch (OutOfMemoryError me) {
+                    System.err.println("Execution interrupted > Cause: OUT OF TIME");
+                    outOfMemory = true;
+                    queue.clear();
+
+                    return mhsList;
                 }
+            }
 
-                if (result == 1 && i < cols - 1) // OK && NOT(last lexicographical element)
-                    queue.add(newE);
-
-                if (result == 2) // MHS
-                    mhsList.add(newE);
-
-                if (debugMode)
-                    System.out.println(DOUBLE_LINE);
+            if ((System.currentTimeMillis() - startTime) > timeout) {
+                queue.clear();
+                break whileLoop;
             }
 
         }
@@ -123,9 +193,9 @@ public class MinimalHittingSetSolver {
 
         if ((endTime - startTime) > timeout) {
             outOfTime = true;
-            queue.clear();
+            queue.clear(); // more free space
 //            System.out.println("queue isEmpty: " + queue.isEmpty());
-            System.out.println("#MHS = " + mhsList.size());
+//            System.out.println("#MHS = " + mhsList.size());
         }
 
         return mhsList;
@@ -288,6 +358,5 @@ public class MinimalHittingSetSolver {
 
         return max;
     }
-
 
 }

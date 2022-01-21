@@ -5,7 +5,6 @@ public class Matrix {
     private String fileName;
 
     public Matrix() {
-
     }
 
     public Matrix(int[][] matrix) {

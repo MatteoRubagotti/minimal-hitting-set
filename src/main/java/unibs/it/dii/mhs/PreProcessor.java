@@ -1,4 +1,4 @@
-package unibs.it.dii.mhs.model;
+package unibs.it.dii.mhs;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -67,7 +67,7 @@ public class PreProcessor {
      * @param row1
      * @param row2
      * @param cols
-     * @return 1 -> row2 <= row1, 2 -> row1 <= row2, -1 -> row1 <> row2, 0 -> row1 == row2
+     * @return 1 -> row2 < row1, 2 -> row1 < row2, -1 -> row1 <> row2, 0 -> row1 == row2
      */
     private int checkRow(int[] row1, int[] row2, int cols) {
         int check = 0; // row1 == row2

@@ -1,23 +1,27 @@
 package unibs.it.dii.mhs;
 
 import com.beust.jcommander.JCommander;
+import com.beust.jcommander.ParameterException;
 import unibs.it.dii.mhs.model.Matrix;
-import unibs.it.dii.mhs.model.PreProcessor;
 import unibs.it.dii.utility.Args;
 import unibs.it.dii.utility.FileMatrixReader;
+import unibs.it.dii.utility.OutputFileWriter;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
 public class MinimalHittingSet {
 
     final static private String DOUBLE_LINE = "==========================================";
-    final static private String MSG_READING_MATRIX_FILE = "\t\t  Reading .matrix file...";
-    final static private String MSG_PRE_PROCESSING_RUNNING = "\t\t\tRun Pre-Processing...";
-    final static private String MSG_MBASE_EXECUTION = "\t\t\tMBase Execution...";
+    final static private String LINE = "------------------------------------------";
+    final static private String MSG_READING_MATRIX_FILE = "\t\tReading .matrix file...";
+    final static private String MSG_PRE_PROCESSING_RUNNING = "\t\tRun Pre-Processing...";
+    final static private String MSG_MBASE_EXECUTION = "\t\tMBase Execution...";
 
     private static final long MEGABYTE = 1024L * 1024L;
+    private static final long MILLISECONDS = 1000;
 
     public static long bytesToMegaBytes(long bytes) {
         return bytes / MEGABYTE;
@@ -25,20 +29,45 @@ public class MinimalHittingSet {
 
     public static void main(String[] args) throws Exception {
         final Args arguments = new Args();
-        JCommander.newBuilder()
+        JCommander jc = JCommander.newBuilder()
                 .addObject(arguments)
-                .build()
-                .parse(args);
+                .build();
+
+        try {
+            jc.parse(args);
+        } catch (ParameterException pe) {
+            jc.usage();
+            System.exit(0);
+        }
+
 
         MinimalHittingSet main = new MinimalHittingSet();
-        main.run(arguments);
+
+        main.run(arguments, jc);
 
     }
 
-    public void run(Args arguments) throws Exception {
+    public void run(Args arguments, JCommander jc) throws Exception {
         final boolean debugMode = false;
-        final boolean preProcessing = true;
-        final long timeout = 10000; // seconds
+
+        // Set arguments
+        final boolean preProcessing = arguments.isPreProcessing();
+        final long timeout = getMillis(arguments.getTimeout());
+        final boolean verbose = arguments.isVerbose();
+
+        if (arguments.isHelp()) {
+            jc.usage();
+            System.exit(0);
+        }
+
+        if(!Files.exists(arguments.getOutputPath())) {
+            Files.createDirectory(arguments.getOutputPath());
+        }
+
+        if (!arguments.getOutputPath().isAbsolute() || !Files.isDirectory(arguments.getOutputPath())) {
+            System.err.println("Check the absolute path for the output file");
+            System.exit(0);
+        }
 
         // Get the Java runtime
         Runtime runtime = Runtime.getRuntime();
@@ -54,9 +83,11 @@ public class MinimalHittingSet {
         //System.out.println(file.getName());
 
         final FileMatrixReader reader = new FileMatrixReader();
+        OutputFileWriter outputFileWriter = new OutputFileWriter();
 
         System.out.println(DOUBLE_LINE);
         System.out.println(MSG_READING_MATRIX_FILE);
+        System.out.println(DOUBLE_LINE);
 
         final Matrix inputMatrix = reader.readMatrixFromFile(file);
         final int initialRows = inputMatrix.getIntMatrix().length;
@@ -71,20 +102,28 @@ public class MinimalHittingSet {
         long endTimePP = 0;
         long startTimePP = 0;
 
-        if (preProcessing)
-        {
+        StringBuilder reportBuilder = new StringBuilder();
+
+        buildOutputHeader(reportBuilder, inputMatrix.getFileName(), initialRows, initialCols);
+
+        if (preProcessing) {
             System.out.println(DOUBLE_LINE);
             System.out.println(MSG_PRE_PROCESSING_RUNNING);
             System.out.println(DOUBLE_LINE);
 
-            calculateUsedMemory(true, runtime, "Used memory before Pre-Processing: ");
+            calculateUsedMemory(verbose, runtime, "Used memory before Pre-Processing: ");
+
             // Pre-Processing execution
             startTimePP = System.currentTimeMillis();
             int[][] newInputIntMatrix = preProcess.computePreProcessing(inputMatrix.getIntMatrix());
             endTimePP = System.currentTimeMillis();
-            calculateUsedMemory(true, runtime, "Used memory after Pre-Processing: ");
 
-            printPreProcessingInformations(preProcess, newInputIntMatrix, endTimePP - startTimePP);
+            calculateUsedMemory(verbose, runtime, "Used memory after Pre-Processing: ");
+
+            long preProcessingTime = endTimePP - startTimePP;
+
+            writePreProcessingMemoryUsed(reportBuilder, runtime);
+            printPreProcessingInformation(preProcess, newInputIntMatrix, preProcessingTime, verbose, debugMode, reportBuilder);
 
             inputMatrix.setIntMatrix(newInputIntMatrix);
         }
@@ -96,135 +135,120 @@ public class MinimalHittingSet {
         System.out.println(MSG_MBASE_EXECUTION);
         System.out.println(DOUBLE_LINE);
 
-        calculateUsedMemory(true, runtime, "Used memory before MBase execution: ");
+        System.out.println(LINE);
+        System.out.println("\tInitial memory available: " + bytesToMegaBytes(runtime.totalMemory()) + " MB");
+        System.out.println(LINE);
+
+        calculateUsedMemory(verbose, runtime, "Used memory before MBase execution: ");
 
         long startTime = System.currentTimeMillis();
 
         // Execution of MBase
-        final Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix, timeout - (endTimePP - startTimePP));
+        final Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix, timeout - (endTimePP - startTimePP), runtime);
 
         long endTime = System.currentTimeMillis();
 
-        long executionTime = endTime - startTime;
+        long executionTime = endTime - startTime; // Execution time of MBase procedure
 
-        calculateUsedMemory(true, runtime, "Used memory after MBase execution: ");
+        buildMBaseReportInformation(outputMatrix, executionTime, runtime, reportBuilder, solver.getMinCardinality(), solver.getMaxCardinality());
+
+        outputMatrixToStringBuilder(reportBuilder, outputMatrix.getIntMatrix(), preProcess.getRowsToRemove(), preProcess.getColsToRemove(), initialCols);
+
+        calculateUsedMemory(verbose, runtime, "Used memory after MBase execution: ");
 
         System.out.println("MBase execution time: " + executionTime + " ms");
 
-        printOutputInformation(outputMatrix, initialCols, preProcess.getRowsToRemove(), preProcess.getColsToRemove());
+        StringBuilder outputFileName = new StringBuilder(arguments.getOutputPath().toString());
+        outputFileName.append("/" + outputMatrix.getFileName());
+        File outputFile = outputFileWriter.createOutputFile(preProcessing, outputFileName.toString());
+
+        outputFileWriter.writeOutputFile(outputFile, reportBuilder);
+
+        if (!solver.isOutOfTime())
+            try {
+                printOutputInformation(outputMatrix, initialCols, preProcess.getRowsToRemove(), preProcess.getColsToRemove(), debugMode, verbose, solver.getMinCardinality(), solver.getMaxCardinality());
+            } catch (OutOfMemoryError me) {
+                System.err.println(me.toString());
+                System.err.println("Execution interrupted > Cause: OUT OF MEMORY");
+            }
 
         System.out.println("Number of MHS found: " + outputMatrix.getIntMatrix().length);
-
-//        Callable<Matrix> execution = () -> {
-//            try {
-//                long endTimePP = 0;
-//                long startTimePP = 0;
-//
-//                if (preProcessing)
-//                {
-//                    calculateUsedMemory(true, runtime, "Used memory before Pre-Processing: ");
-//                    // Pre-Processing execution
-//                    startTimePP = System.currentTimeMillis();
-//                    int[][] newInputIntMatrix = preProcess.computePreProcessing(inputMatrix.getIntMatrix());
-//                    endTimePP = System.currentTimeMillis();
-//                    calculateUsedMemory(true, runtime, "Used memory after Pre-Processing: ");
-//
-//                    printPreProcessingInformations(preProcess, newInputIntMatrix, endTimePP - startTimePP);
-//
-//                    newInputMatrix.setIntMatrix(newInputIntMatrix);
-//                } else {
-//                    newInputMatrix.setIntMatrix(inputMatrix.getIntMatrix());
-//                    newInputMatrix.setFileName(inputMatrix.getFileName());
-//                }
-//
-//                calculateUsedMemory(true, runtime, "Used memory before MBase execution: ");
-//
-//                long startTime = System.currentTimeMillis();
-//
-//                // Execution of MBase
-//                final Matrix outputMatrix = solver.computeMinimalHittingSets(newInputMatrix, timeout - (endTimePP - startTimePP));
-//
-//                long endTime = System.currentTimeMillis();
-//                long executionTime = endTime - startTime;
-//                System.out.println("MBase execution time: " + executionTime + " ms");
-//
-//                return outputMatrix;
-//            } catch (InterruptedException ie) {
-//                throw new IllegalStateException("Execution interrupted!", ie);
-//            }
-//        };
-
-//        final ExecutorService executor = Executors.newSingleThreadExecutor();
-////        final Future future = executor.submit(execution);
-//        final Future<Matrix> future = executor.submit(execution);
-//        executor.shutdown(); // This does not cancel the already-scheduled task.
-//
-//        try {
-//            Matrix outputMatrix = future.get(timeout, TimeUnit.SECONDS);
-//
-//            calculateUsedMemory(true, runtime, "Used memory after MBase execution is: ");
-//
-//            printOutputInformation(outputMatrix, inputMatrix, preProcess.getRowsToRemove(), preProcess.getColsToRemove());
-//
-//            System.out.println("Number of MHS found: " + outputMatrix.getIntMatrix().length);
-//
-//        } catch (InterruptedException ie) {
-//            /* Handle the interruption. Or ignore it. */
-//            System.out.println(ie.getCause());
-//        } catch (ExecutionException ee) {
-//            /* Handle the error. Or ignore it. */
-//            System.out.println(ee.getCause());
-//        } catch (TimeoutException te) {
-//            /* Handle the timeout. Or ignore it. */
-//            boolean timeoutCheck = true;
-//            System.out.println("Timeout reached!");
-////            executor.awaitTermination(10, TimeUnit.SECONDS);
-//        }
-//
-//        if (!executor.isTerminated()) {
-//            System.out.println("Not terminated!");
-//            executor.shutdownNow(); // If you want to stop the code that hasn't finished.
-//        }
-////        calculateUsedMemory(true, runtime, "Used memory after execution is: ");
     }
 
-    private void printPreProcessingInformations(PreProcessor preProcess, int[][] newInputIntMatrix, long timePP) {
-        System.out.println(DOUBLE_LINE);
+    private void buildMBaseReportInformation(Matrix outputMatrix, long executionTime, Runtime runtime, StringBuilder sb, long minCard, long maxCard) {
+        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+
+        sb.append("Output Matrix:\n");
+        sb.append("Minimum cardinality: ").append(minCard).append("\nMaximum cardinality: ").append(maxCard).append("\n");
+        sb.append("Execution time MBase: ").append(executionTime).append(" ms").append("\n");
+        sb.append("Memory used (MBase): ").append(bytesToMegaBytes(memoryAfter)).append("MB\n").append("\n");
+        sb.append("Number of MHS found: ").append(outputMatrix.getIntMatrix().length).append("\n");
+        sb.append(LINE).append("\n");
+        sb.append("Output Matrix:").append("\n");
+    }
+
+    private void writePreProcessingMemoryUsed(StringBuilder sb, Runtime runtime) {
+        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+        sb.append("Memory used (Pre-Elaboration): ").append(bytesToMegaBytes(memoryAfter)).append("MB\n");
+    }
+
+    private void buildOutputHeader(StringBuilder reportBuilder, String fileName, int initialRows, int initialCols) {
+        reportBuilder.append(DOUBLE_LINE + "\n");
+        reportBuilder.append("\t\t Matrix ").append(fileName).append("\n");
+        reportBuilder.append(DOUBLE_LINE + "\n");
+        reportBuilder.append("Input Matrix:\n").append("Size: ").append(initialRows).append("x").append(initialCols).append("\n");
+        reportBuilder.append(LINE + "\n");
+    }
+
+    private long getMillis(long time) {
+        return time * MILLISECONDS;
+    }
+
+    private void printPreProcessingInformation(PreProcessor preProcess, int[][] newInputIntMatrix, long timePP, boolean verbose, boolean debugMode, StringBuilder sb) {
+//        System.out.println(DOUBLE_LINE);
+        sb.append("Pre-Processing time: ").append(timePP).append(" ms\n");
+        sb.append("#Rows removed " + "(").append(preProcess.getRowsToRemove().size()).append(")").append(" : ").append(preProcess.getRowsToRemove().toString()).append("\n");
+        sb.append("#Columns removed " + "(").append(preProcess.getColsToRemove().size()).append(")").append(" : ").append(preProcess.getColsToRemove().toString()).append("\n");
+        sb.append("Matrix Pre-Processed:\nSize: ").append(newInputIntMatrix.length).append("x").append(newInputIntMatrix[0].length).append("\n");
+        sb.append(LINE).append("\n");
+
         System.out.println("Pre-Processing time: " + timePP + " ms");
         System.out.println("#Rows removed " + "(" + preProcess.getRowsToRemove().size() + ")" + " : " + preProcess.getRowsToRemove().toString());
-        System.out.println("#Columns removed " + "(" + preProcess.getColsToRemove().size() + ")" + " : "+ preProcess.getColsToRemove().toString());
+        System.out.println("#Columns removed " + "(" + preProcess.getColsToRemove().size() + ")" + " : " + preProcess.getColsToRemove().toString());
         System.out.println("Matrix Pre-Processed:\nSize: " + newInputIntMatrix.length + "x" + newInputIntMatrix[0].length);
-        printMatrix(newInputIntMatrix, true);
+        printMatrix(newInputIntMatrix, debugMode, verbose);
     }
 
     private void printInputInformation(Matrix inputMatrix) {
         String inputMatrixName = inputMatrix.getFileName();
         System.out.println(DOUBLE_LINE);
-        System.out.println("Input .matrix: " + inputMatrixName);
+        System.out.println("Input file (.matrix): " + inputMatrixName);
         int[][] inputIntMatrix = inputMatrix.getIntMatrix();
-        System.out.println("Input Matrix:");
         System.out.println("Size: " + inputIntMatrix.length + "x" + inputIntMatrix[0].length);
-        printMatrix(inputIntMatrix, true);
+//        printMatrix(inputIntMatrix, true);
     }
 
-    private void printOutputInformation(Matrix outputMatrix, int initialCols, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved) {
+    private void printOutputInformation(Matrix outputMatrix, int initialCols, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, boolean debug, boolean verbose, long minCard, long maxCard) {
         String outputMatrixName = outputMatrix.getFileName();
         int[][] outputIntMatrix = outputMatrix.getIntMatrix();
 //        System.out.println("Output file: " + outputMatrixName);
         System.out.println("Output file: " + outputMatrix.getFileName());
         System.out.println("Output Matrix:");
         System.out.println(outputIntMatrix.length + "x" + outputIntMatrix[0].length);
-        printOutputMatrix(outputIntMatrix, true, rowsRemoved, colsRemoved, initialCols);
+        System.out.println("Minimum cardinality: " + minCard + "\nMaximum cardinality: " + maxCard);
+        printOutputMatrix(outputIntMatrix, debug, verbose, rowsRemoved, colsRemoved, initialCols);
     }
 
-    private void printOutputMatrix(int[][] matrix, boolean debug, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, int initialCols) {
+    private void printOutputMatrix(int[][] matrix, boolean debug, boolean verbose, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, int initialCols) {
         if (rowsRemoved.isEmpty() && colsRemoved.isEmpty()) {
-            printMatrix(matrix, debug);
+            printMatrix(matrix, debug, verbose);
             return;
         }
 
         int[][] outputMatrix = new int[matrix.length][initialCols];
-        System.out.println("output.matrix Size: " + matrix.length + "x" + initialCols);
+
+        if (debug)
+            System.out.println("output.matrix Size: " + matrix.length + "x" + initialCols);
 //        System.out.println("Size: " + outputMatrix.length + "x" + outputMatrix[0].length);
 
         for (int i = 0; i < matrix.length; i++) {
@@ -234,12 +258,12 @@ public class MinimalHittingSet {
             }
         }
 
-        printMatrix(outputMatrix, debug);
+        printMatrix(outputMatrix, debug, verbose);
 
     }
 
-    private void printMatrix(int[][] intMatrix, boolean debugMode) {
-        if (!debugMode) {
+    private void printMatrix(int[][] intMatrix, boolean debugMode, boolean verbose) {
+        if (!debugMode && !verbose) {
             return;
         }
 
@@ -251,12 +275,38 @@ public class MinimalHittingSet {
         }
     }
 
-    private void calculateUsedMemory(boolean debugMode, Runtime runtime, String s) {
-        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
-        if (debugMode) {
+    private void calculateUsedMemory(boolean verbose, Runtime runtime, String s) {
+        if (verbose) {
+            long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
 //            System.out.println(s + memoryAfter + "bytes");
             System.out.println(s + bytesToMegaBytes(memoryAfter) + "MB");
         }
     }
 
+    private void outputMatrixToStringBuilder(StringBuilder sb, int[][] matrix, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, int initialCols) {
+        if (rowsRemoved.isEmpty() && colsRemoved.isEmpty()) {
+            matrixToString(sb, matrix);
+            return;
+        }
+
+        int[][] outputMatrix = new int[matrix.length][initialCols]; // Output matrix with the correct columns (i.e. initialCols)
+
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0, colCount = 0; j < initialCols; j++) {
+                if (!colsRemoved.contains(j))
+                    outputMatrix[i][j] = matrix[i][colCount++];
+            }
+        }
+
+        matrixToString(sb, outputMatrix);
+    }
+
+    private void matrixToString(StringBuilder sb, int[][] matrix) {
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[0].length; j++) {
+                sb.append(matrix[i][j]).append(" ");
+            }
+            sb.append("-\n");
+        }
+    }
 }
