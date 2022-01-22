@@ -4,11 +4,12 @@ public class Matrix {
     private int[][] intMatrix;
     private String name;
 
-    public Matrix() {
-    }
-
     public Matrix(int[][] matrix) {
         this.intMatrix = matrix;
+    }
+
+    public Matrix() {
+
     }
 
     public int[][] getIntMatrix() {

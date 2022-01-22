@@ -20,19 +20,23 @@ public class MinimalHittingSetSolver {
     final static private String MSG_EXCEPTION_GET_FIRST_ELEMENT = "ATTENTION! Something went wrong with getFirstElement (i.e. get the first lexicographical element available)";
     final static private String MSG_EXCEPTION_CHECK_MODULE = "ATTENTION! Something went wrong with checkModule";
 
-    private boolean debugMode;
     private boolean outOfTime = false;
     private boolean outOfMemory = false;
     private long minCardinality = 0;
     private long maxCardinality = 0;
+    private long executionTime = 0;
     private int mhsFound = 0;
+
+    public long getExecutionTime() {
+        return executionTime;
+    }
+
+    public void setExecutionTime(long getExecutionTime) {
+        this.executionTime = getExecutionTime;
+    }
 
     public int getMhsFound() {
         return mhsFound;
-    }
-
-    public void setMhsFound(int mhsFound) {
-        this.mhsFound = mhsFound;
     }
 
     public long getMinCardinality() {
@@ -51,30 +55,24 @@ public class MinimalHittingSetSolver {
         return outOfMemory;
     }
 
-    public void setOutOfTime(boolean outOfTime) {
-        this.outOfTime = outOfTime;
-    }
-
-    public MinimalHittingSetSolver(boolean debugMode) {
-        this.debugMode = debugMode;
-    }
-
-    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter) throws Exception {
+    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, boolean debugMode) throws Exception {
         // Create the output matrix object
         final Matrix mhsMatrix = new Matrix();
         // Object to create the matrix (int[][]) from an ArrayList
         final OutputMatrixBuilder outputMatrixBuilder = new OutputMatrixBuilder();
+        // Object to build the information to write in the output file
+        final StringBuilder sbHeaderMBase = new StringBuilder();
 
         final int[][] inputIntMatrix = matrix.getIntMatrix();
 
         try {
 
-            long startTime = System.currentTimeMillis();
+            long startTimeMBase = System.currentTimeMillis();
 
             // List of all MHS found
-            final ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout);
+            final ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout, debugMode);
 
-            long executionTime = System.currentTimeMillis() - startTime;
+            executionTime = System.currentTimeMillis() - startTimeMBase;
 
             // Number of MHS found
             mhsFound = mhsList.size();
@@ -85,7 +83,6 @@ public class MinimalHittingSetSolver {
 
             printMBaseExecutionInformation(runtime, mhsList, executionTime);
 
-            StringBuilder sbHeaderMBase = new StringBuilder();
             buildMBaseExecutionInformation(runtime, mhsList, executionTime, sbHeaderMBase);
 
             // Write the information built before in the output report
@@ -130,6 +127,7 @@ public class MinimalHittingSetSolver {
                 mhsMatrix.setIntMatrix(mhsIntMatrix);
 
             } catch (OutOfMemoryError me) {
+                System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
                 outOfMemory = true;
 //            System.exit(-1);
@@ -173,7 +171,7 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * Method to compute the cardinality of the MHS found
+     * Method to compute the cardinality of the MHS found.
      *
      * @param e
      * @return
@@ -257,7 +255,7 @@ public class MinimalHittingSetSolver {
      * @param timeout   The maximum time limit
      * @return The list of MHS found
      */
-    private ArrayList<int[]> solve(int[][] intMatrix, long timeout) throws Exception {
+    private ArrayList<int[]> solve(int[][] intMatrix, long timeout, boolean debugMode) throws Exception {
         final int rows = intMatrix.length; // N = number of rows
         final int cols = intMatrix[0].length; // number of columns = X <= M
 
@@ -277,7 +275,7 @@ public class MinimalHittingSetSolver {
 
             if (debugMode) {
                 System.out.println(LINE);
-                System.out.println("succ: " + getSucc(getMax(e), cols));
+                System.out.println("Successor: " + getSucc(getMax(e), cols));
             }
 
             for (int i = getSucc(getMax(e), cols); i < cols && (System.currentTimeMillis() - startTime) <= timeout; i++) {
@@ -286,7 +284,7 @@ public class MinimalHittingSetSolver {
                     newE[i] = 1;
 
                     if (debugMode)
-                        System.out.println("e: " + Arrays.toString(newE));
+                        System.out.println("Element: " + Arrays.toString(newE));
 
                     // Create the submatrix object
                     SubMatrix subMatrix = getSubMatrix(newE, intMatrix);
@@ -298,7 +296,7 @@ public class MinimalHittingSetSolver {
                     final int[] rv = getRepresentativeVector(subMatrix);
 
                     // Scan the representative vector (subset of M)
-                    int result = checkModule(rv, subMatrix.getElements());
+                    int result = checkModule(rv, subMatrix.getElements(), debugMode);
 
                     if (debugMode) {
                         System.out.println("RV" + i + ": " + Arrays.toString(rv));
@@ -330,8 +328,6 @@ public class MinimalHittingSetSolver {
         if ((endTime - startTime) > timeout) {
             outOfTime = true;
             queue.clear(); // more free space
-//            System.out.println("queue isEmpty: " + queue.isEmpty());
-//            System.out.println("#MHS = " + mhsList.size());
         }
 
         // Return the MHS computed anyway
@@ -401,7 +397,7 @@ public class MinimalHittingSetSolver {
      * @param elements The lexicographical elements considered
      * @return MHS = 2, OK = 1, KO = 0
      */
-    private int checkModule(int[] rv, ArrayList<Integer> elements) throws Exception {
+    private int checkModule(int[] rv, ArrayList<Integer> elements, boolean debugMode) throws Exception {
         // RV does not have 0 inside
         boolean empty = false;
 
@@ -487,10 +483,10 @@ public class MinimalHittingSetSolver {
                         continue;
                     }
 
-                    // Can be removed [?]
-                    if (rv[i] == (subMatrix.getElements().get(j) + 1) && intSubMatrix[i][j] == 1) {
-                        rv[i] = subMatrix.getElements().get(j) + 1; //
-                    }
+//                    // Can be removed [?]
+//                    if (rv[i] == (subMatrix.getElements().get(j) + 1) && intSubMatrix[i][j] == 1) {
+//                        rv[i] = subMatrix.getElements().get(j) + 1; //
+//                    }
                 }
 
             }

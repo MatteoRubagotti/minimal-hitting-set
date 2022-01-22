@@ -28,12 +28,19 @@ public class PreProcessor {
         return removeCols(newMatrix);
     }
 
+    /**
+     * Method to remove rows from the input matrix.
+     *
+     * @param matrix
+     * @return
+     */
     private int[][] removeRows(int[][] matrix) {
         int cols = matrix[0].length;
+        // Set object does not contain duplicates
         final Set<Integer> rowsToRemoveSet = new HashSet<>();
 
         for (int i = 0; i < matrix.length; i++) {
-            for (int j = i + 1; j < matrix.length; j++) {
+            for (int j = i + 1; j < matrix.length; j++) { // Compare with the all next rows of input matrix
                 if (checkRow(matrix[i], matrix[j], cols) == 1 || checkRow(matrix[i], matrix[j], cols) == 0) // N_j is a subset of N_i or are the same (check=0)
                 {
                     rowsToRemoveSet.add(i);
@@ -46,12 +53,13 @@ public class PreProcessor {
         }
 
         rowsToRemove.clear();
-        rowsToRemove.addAll(rowsToRemoveSet); // create an ArrayList of rows removed
+        rowsToRemove.addAll(rowsToRemoveSet); // Update the list with the rows removed
 
+        // Create the new input matrix with <= rows
         int[][] newMatrix = new int[matrix.length - rowsToRemove.size()][matrix[0].length];
 
         for (int i = 0, rowCount = 0; i < matrix.length; i++) {
-            if (rowsToRemove.contains(i)) {
+            if (rowsToRemove.contains(i)) { // Skip the row to store
                 continue;
             }
             for (int j = 0; j < matrix[0].length; j++) {
@@ -64,9 +72,12 @@ public class PreProcessor {
     }
 
     /**
-     * @param row1
-     * @param row2
-     * @param cols
+     * Method to compare two rows and return if one contains the other (or viceversa, 1 or 2), they are equals (0)
+     * or there is not a subset relation.
+     *
+     * @param row1 The fixed row to compare with row2
+     * @param row2 The row after row1
+     * @param cols The number of columns to compare
      * @return 1 -> row2 < row1, 2 -> row1 < row2, -1 -> row1 <> row2, 0 -> row1 == row2
      */
     private int checkRow(int[] row1, int[] row2, int cols) {
@@ -95,8 +106,13 @@ public class PreProcessor {
         return check;
     }
 
-    private void printMatrix(int[][] intMatrix, boolean debugMode) {
-        if (!debugMode) {
+    /**
+     * Method to print the matrix.
+     *
+     * @param intMatrix
+     */
+    private void printMatrix(int[][] intMatrix) {
+        if (!debug) {
             return;
         }
 
@@ -109,10 +125,16 @@ public class PreProcessor {
         }
     }
 
+    /**
+     * Method to remove columns from a matrix.
+     *
+     * @param matrix
+     * @return
+     */
     private int[][] removeCols(int[][] matrix) {
         int[][] transposeMatrix = transpose(matrix);
         if (debug)
-            printMatrix(transposeMatrix, true);
+            printMatrix(transposeMatrix);
 
         int rows = transposeMatrix.length; // REMEMBER: matrix is transposed!
         final Set<Integer> rowsToRemove = new HashSet<>();
@@ -135,6 +157,12 @@ public class PreProcessor {
         return newInputMatrix;
     }
 
+    /**
+     * Method to compute the transpose of a matrix.
+     *
+     * @param matrix
+     * @return
+     */
     private int[][] transpose(int[][] matrix) {
         int[][] transposeMatrix = new int[matrix[0].length][matrix.length];
 
@@ -147,8 +175,16 @@ public class PreProcessor {
         return transposeMatrix;
     }
 
+    /**
+     * Method to check if the col selected is empty.
+     *
+     * @param col
+     * @param numCol
+     * @return
+     */
     private boolean colIsEmpty(int[] col, int numCol) {
         ArrayList<Integer> colList = (ArrayList<Integer>) Arrays.stream(col).boxed().collect(Collectors.toList());
+
         if (debug)
             System.out.println("col" + numCol + ": " + colList.toString() + "\nisEmpty: " + !colList.contains(1));
 

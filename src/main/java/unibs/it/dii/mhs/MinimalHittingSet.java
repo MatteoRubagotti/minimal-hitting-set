@@ -62,25 +62,30 @@ public class MinimalHittingSet {
     }
 
     public void run(Args arguments, JCommander jc) throws Exception {
-        // Help call by CLI
+        // Help call by [-h|--help] argument
         if (arguments.isHelp()) {
             jc.usage();
-            System.exit(0);
+            System.exit(255);
         }
 
+//        System.out.println("Results bytes = " );
+//        System.exit(1);
         // Experimental purpose
         final boolean debugMode = false;
 
-        // Set variables with arguments passed
+        // Set variables with arguments parsed on command line
         final boolean preProcessing = arguments.isPreProcessing();
         final boolean verbose = arguments.isVerbose();
         final Path inputPath = arguments.getInputPath();
         final Path outputPath = arguments.getOutputPath();
         final long timeout = getMillis(arguments.getTimeout());
 
+        if (verbose)
+            System.out.println("Max memory available: " + bytesToMegaBytes(Runtime.getRuntime().maxMemory()) + " MB");
+
         final Path csvPath = Paths.get(PATH_TO_CSV + "/" + CSV_FILE_NAME);
 
-        // Object to build the CSV report informations
+        // Object to build the CSV report information
         final StringJoiner stringJoiner = new StringJoiner(",");
         stringJoiner.add(DATE_TIME); // Add the first column value, namely the date-time information
 
@@ -102,10 +107,10 @@ public class MinimalHittingSet {
         runtime.gc();
 
         if (debugMode)
-            getTotalMemoryAvailable(verbose, runtime, "Total memory available is: ");
+            printTotalMemoryAvailable(runtime, "Total memory available is: ");
 
         // Create the solver object
-        final MinimalHittingSetSolver solver = new MinimalHittingSetSolver(debugMode);
+        final MinimalHittingSetSolver solver = new MinimalHittingSetSolver();
 
         // Create the input file object
         final File inputFile = inputPath.toFile();
@@ -149,7 +154,7 @@ public class MinimalHittingSet {
             int[][] newInputIntMatrix = preProcess.computePreProcessing(inputMatrix.getIntMatrix());
             long endTimePP = System.currentTimeMillis();
 
-            memory = printUsedMemory(verbose, runtime, "Consumed memory after Pre-Processing: ");
+            memory = printUsedMemory(verbose, runtime, "Consumed memory (Pre-Processing): ");
 
             // Compute the time to execute the pre-processing operation
             preProcessingTime = endTimePP - startTimePP;
@@ -186,11 +191,11 @@ public class MinimalHittingSet {
 
         // Execution of MBase procedure
         long startTimeMBase = System.currentTimeMillis();
-        final Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix, residualTime, runtime, outputFileWriter);
+        final Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix, residualTime, runtime, outputFileWriter, debugMode);
         long endTimeMBase = System.currentTimeMillis();
 
         // Execution time of MBase procedure
-        long executionTimeMBase = endTimeMBase - startTimeMBase;
+        long executionTimeMBase = solver.getExecutionTime();
 
         // Consumed memory after MBase execution
         long memoryAfterMBase = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
@@ -290,15 +295,11 @@ public class MinimalHittingSet {
 
     /**
      * Method to print the total memory available.
-     *
-     * @param verbose
-     * @param runtime
+     *  @param runtime
      * @param s
      */
-    private void getTotalMemoryAvailable(boolean verbose, Runtime runtime, String s) {
-        if (verbose) {
+    private void printTotalMemoryAvailable(Runtime runtime, String s) {
             System.out.println(s + bytesToMegaBytes(runtime.maxMemory()) + " MB");
-        }
     }
 
     /**
@@ -449,10 +450,8 @@ public class MinimalHittingSet {
             String outputMatrixName = outputMatrix.getName();
             int[][] outputIntMatrix = outputMatrix.getIntMatrix();
 
-//            System.out.println("Output file: " + outputMatrix.getFileName() + ".out");
             System.out.println("Output Matrix:");
-//            System.out.println(outputIntMatrix.length + "x" + outputIntMatrix[0].length);
-            System.out.println("Minimum cardinality: " + minCard + "\nMaximum cardinality: " + maxCard);
+            System.out.println(LINE);
             checkPrintOutputMatrix(outputIntMatrix, debug, verbose, rowsRemoved, colsRemoved, initialCols);
         }
     }
