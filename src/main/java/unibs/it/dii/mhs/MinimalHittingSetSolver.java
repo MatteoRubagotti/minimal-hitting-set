@@ -55,15 +55,28 @@ public class MinimalHittingSetSolver {
         final int[][] inputIntMatrix = matrix.getIntMatrix();
 
         try {
-            ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout); // List of all MHS found
+
+            long startTime = System.currentTimeMillis();
+
+            final ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout); // List of all MHS found
+
             minCardinality = checkCardinality(mhsList.get(0));
             maxCardinality = checkCardinality(mhsList.get(mhsList.size() - 1));
 
-            StringBuilder sbCardinality = new StringBuilder();
-            sbCardinality.append("Output Matrix:\n");
-            sbCardinality.append("Minimum cardinality: ").append(minCardinality).append("\n");
-            sbCardinality.append("Maximum cardinality: ").append(maxCardinality).append("\n");
-            outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), sbCardinality);
+            long executionTime = System.currentTimeMillis() - startTime;
+
+            System.out.println("Number of MHS found (in " + executionTime + " ms)" + ": " + mhsList.size());
+            System.out.println("Minimum cardinality: " + minCardinality);
+            System.out.println("Maximum cardinality: " + maxCardinality);
+            calculateUsedMemory(runtime, "Used memory for MBase execution: ");
+
+            StringBuilder sbHeaderMBase = new StringBuilder();
+            sbHeaderMBase.append("Output Matrix:\n");
+            sbHeaderMBase.append("Minimum cardinality: ").append(minCardinality).append("\n");
+            sbHeaderMBase.append("Maximum cardinality: ").append(maxCardinality).append("\n");
+            sbHeaderMBase.append("Number of MHS found (in ").append(executionTime).append(" ms)").append(": ").append(mhsList.size()).append("\n");
+            sbHeaderMBase.append("Used memory for MBase execution: ").append(bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory())).append("\n");
+            outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), sbHeaderMBase);
 
             if (outOfMemory) {
                 System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
@@ -81,33 +94,37 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF TIME");
                 StringBuilder sb = new StringBuilder();
                 sb.append("Execution interrupted > Cause: OUT OF TIME\n");
-                sb.append("Number of MHS found: ").append(mhsList.size()).append("\n");
+//                sb.append("Number of MHS found: ").append(mhsList.size()).append("\n");
                 outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), sb);
 
                 try {
                     printMHSFoundUpToTimeout(mhsList, timeout, outputFileWriter);
                 } catch (OutOfMemoryError me) {
                     System.err.println("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY");
+                    outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), new StringBuilder("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY\n"));
                     outOfMemory = true;
 //                System.exit(-1);
                 }
             }
+
             try {
+
                 int[][] mhsIntMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputIntMatrix[0].length);
 
                 mhsMatrix.setFileName(matrix.getFileName());
                 mhsMatrix.setIntMatrix(mhsIntMatrix);
+
             } catch (OutOfMemoryError me) {
                 outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
                 outOfMemory = true;
 //            System.exit(-1);
             }
 
-            calculateUsedMemory(runtime, "Used memory after MBase execution:");
-
         } catch (OutOfMemoryError me) {
+            System.err.println("OUT OF MEMORY");
             outOfMemory = true;
         }
+
         return mhsMatrix;
     }
 
@@ -139,9 +156,9 @@ public class MinimalHittingSetSolver {
 //        }
 
         System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
-        System.out.println("Number of MHS found (in " + timeout + " ms)" + ": " + mhsList.size());
-        System.out.println("Minimum cardinality: " + minCardinality + "\nMaximum cardinality: " + maxCardinality);
-//        System.exit(-1);
+//        System.out.println("Number of MHS found (in " + timeout + " ms)" + ": " + mhsList.size());
+//        System.out.println("Minimum cardinality: " + minCardinality + "\nMaximum cardinality: " + maxCardinality);
+        System.exit(-1);
     }
 
     private void printMHSFoundUpToTimeout(ArrayList<int[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
@@ -161,16 +178,17 @@ public class MinimalHittingSetSolver {
             outOfMemory = true;
             outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
             System.err.println("Write output file interrupted > Cause: OUT OF MEMORY");
-//            System.exit(-1);
+            System.exit(-1);
         }
 //        finally {
 //            outputFileWriter.writeOutputFile(outputFileWriter.getOutputFile(), new StringBuilder("Interruption > Cause : OUT OF TIME\n"));
 //        }
 
-        System.out.println("Execution interrupted > Cause: OUT OF TIME");
-        System.out.println("Number of MHS found (in " + timeout + " ms)" + ": " + mhsList.size());
-        System.out.println("Minimum cardinality: " + minCardinality + "\nMaximum cardinality: " + maxCardinality);
-        System.exit(0);
+//        System.out.println("Execution interrupted > Cause: OUT OF TIME");
+//        System.out.println("Number of MHS found (in " + timeout + " ms)" + ": " + mhsList.size());
+//        System.out.println("Minimum cardinality: " + minCardinality + "\nMaximum cardinality: " + maxCardinality);
+        System.out.println("For more details: " + outputFileWriter.getOutputFile().getAbsolutePath());
+        System.exit(100);
     }
 
     private void calculateUsedMemory(Runtime runtime, String s) {
@@ -195,7 +213,6 @@ public class MinimalHittingSetSolver {
         queue.add(new int[cols]); // Add empty vector [0 0 ... 0]
         long startTime = System.currentTimeMillis();
 
-        whileLoop:
         while (!queue.isEmpty() && (System.currentTimeMillis() - startTime) <= timeout) {
             int[] e = queue.poll();
 

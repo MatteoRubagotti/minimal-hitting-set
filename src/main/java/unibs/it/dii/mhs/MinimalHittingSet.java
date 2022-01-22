@@ -5,11 +5,14 @@ import com.beust.jcommander.ParameterException;
 import unibs.it.dii.mhs.model.Matrix;
 import unibs.it.dii.utility.Args;
 import unibs.it.dii.utility.FileMatrixReader;
+import unibs.it.dii.utility.OutputCSVWriter;
 import unibs.it.dii.utility.OutputFileWriter;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
 public class MinimalHittingSet {
@@ -19,6 +22,11 @@ public class MinimalHittingSet {
     final static private String MSG_READING_MATRIX_FILE = "\t\tReading .matrix file...";
     final static private String MSG_PRE_PROCESSING_RUNNING = "\t\tRun Pre-Processing...";
     final static private String MSG_MBASE_EXECUTION = "\t\tMBase Execution...";
+
+    final static private String PATH_TO_CSV = "./csv";
+    final static private String CSV_FILE_NAME = "mhs-report.csv";
+
+    final static private String CSV_HEADER = "Matrix,Execution time Pre-Elaboration,Execution time MBase,Pre-Elaboration RAM (MB),MBase RAM (MB),Out of time,Out of memory,Rows,Columns,Cardinality Min,Cardinality Max";
 
     private static final long MEGABYTE = 1024L * 1024L;
     private static final long MILLISECONDS = 1000;
@@ -48,17 +56,33 @@ public class MinimalHittingSet {
     }
 
     public void run(Args arguments, JCommander jc) throws Exception {
-        final boolean debugMode = false;
-
-        // Set arguments
-        final boolean preProcessing = arguments.isPreProcessing();
-        final long timeout = getMillis(arguments.getTimeout());
-        final boolean verbose = arguments.isVerbose();
-
+        // Help call by CLI
         if (arguments.isHelp()) {
             jc.usage();
             System.exit(0);
         }
+
+        // Experimental purpose
+        final boolean debugMode = false;
+
+        // Set variables with arguments passed
+        final boolean preProcessing = arguments.isPreProcessing();
+        final long timeout = getMillis(arguments.getTimeout());
+        final boolean verbose = arguments.isVerbose();
+
+        // CSV
+        OutputCSVWriter csvWriter = new OutputCSVWriter();
+        Path csvPath = Paths.get(PATH_TO_CSV + "/" + CSV_FILE_NAME);
+
+        if (!Files.exists(Paths.get(PATH_TO_CSV))) // ./csv directory does not exist
+            Files.createDirectory(Paths.get(PATH_TO_CSV));
+
+        if (!Files.exists(csvPath)) {
+            Files.createFile(csvPath);
+            // Create the header of csv
+            csvWriter.writeCSVHeader(csvPath, CSV_HEADER.split(","));
+        }
+
 
         if (!Files.exists(arguments.getOutputPath())) {
             Files.createDirectory(arguments.getOutputPath());
@@ -154,7 +178,7 @@ public class MinimalHittingSet {
         // Execution time of MBase procedure
         long executionTime = endTime - startTime;
 
-        System.out.println("Number of MHS found: " + outputMatrix.getIntMatrix().length);
+//        System.out.println("Number of MHS found: " + outputMatrix.getIntMatrix().length);
 
         // TODO -> write on csv and create the ####.####.out
 
@@ -190,11 +214,11 @@ public class MinimalHittingSet {
     private void buildMBaseReportInformation(Matrix outputMatrix, long executionTime, Runtime runtime, StringBuilder sb, long minCard, long maxCard) {
         long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
 
-        sb.append("Output Matrix:\n");
+//        sb.append("Output Matrix:\n");
 //        sb.append("Minimum cardinality: ").append(minCard).append("\nMaximum cardinality: ").append(maxCard).append("\n");
         sb.append("Execution time MBase: ").append(executionTime).append(" ms").append("\n");
         sb.append("Memory used (MBase): ").append(bytesToMegaBytes(memoryAfter)).append("MB\n").append("\n");
-        sb.append("Number of MHS found: ").append(outputMatrix.getIntMatrix().length).append("\n");
+//        sb.append("Number of MHS found: ").append(outputMatrix.getIntMatrix().length).append("\n");
         sb.append(LINE).append("\n");
         sb.append("Output Matrix:").append("\n");
     }
