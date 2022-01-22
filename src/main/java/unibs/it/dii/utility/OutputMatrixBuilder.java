@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class OutputMatrixBuilder {
 
     public int[][] getMHSIntOutputMatrix(ArrayList<int[]> mhsList, int cols) {
-        int[][] outputMatrix = new int[mhsList.size()][cols]; // K x M, where K is the number of MHS found
+        int[][] outputMatrix = new int[mhsList.size()][cols]; // K x X, where K is the number of MHS found and X <= M
         int row = 0;
 
         for (int[] mhs : mhsList) {

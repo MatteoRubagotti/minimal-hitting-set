@@ -1,10 +1,6 @@
 package unibs.it.dii.utility;
 
-import org.apache.commons.io.FileUtils;
-
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 public class OutputFileWriter {
 
@@ -16,6 +12,10 @@ public class OutputFileWriter {
         return outputFile;
     }
 
+    public void setFile(File outputFile) {
+        this.outputFile = outputFile;
+    }
+
     public File createOutputFile(boolean preProcessing, String name) throws IOException {
         final StringBuilder fullName = new StringBuilder(name);
 
@@ -24,24 +24,20 @@ public class OutputFileWriter {
 
         fullName.append(".out");
 
-        final File output = new File(fullName.toString());
+        outputFile = new File(fullName.toString());
 
-        if (!output.createNewFile()) // File already exists
-            new FileOutputStream(output).close(); // Delete the content of the file
+        if (!outputFile.createNewFile()) // File already exists
+            new FileOutputStream(outputFile).close(); // Comment these two line if you want to append more report information for the same input matrix
 
-        return output;
+        return outputFile;
     }
 
-    public void writeOutputFile(File output, StringBuilder sb) throws IOException {
-        final BufferedWriter bw = new BufferedWriter(new FileWriter(output.getAbsoluteFile(), true));
+    public void writeOutputFile(StringBuilder sb) throws IOException {
+        final BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile.getAbsoluteFile(), true));
 
         // Start write report information
         bw.append(sb.toString());
         // Close connection
         bw.close();
-    }
-
-    public void setFile(File outputFile) {
-        this.outputFile = outputFile;
     }
 }

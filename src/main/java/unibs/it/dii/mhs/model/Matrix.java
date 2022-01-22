@@ -2,7 +2,7 @@ package unibs.it.dii.mhs.model;
 
 public class Matrix {
     private int[][] intMatrix;
-    private String fileName;
+    private String name;
 
     public Matrix() {
     }
@@ -19,11 +19,11 @@ public class Matrix {
         this.intMatrix = intMatrix;
     }
 
-    public String getFileName() {
-        return fileName;
+    public String getName() {
+        return name;
     }
 
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
+    public void setName(String name) {
+        this.name = name;
     }
 }

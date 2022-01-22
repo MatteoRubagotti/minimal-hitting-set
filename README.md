@@ -5,8 +5,8 @@ This implies that the intersection of H and S is null for every set S belonging 
 
 ## Requirements
 - Java 8
-- Maven (Recommended version 3.6.3)
-- IDE (e.g. IntelliJ IDEA)
+- Maven (recommended version 3.6.3)
+- IDE (e.g. IntelliJ IDEA, Eclipse)
 
 ## Installation & Run
 ### Git Clone
@@ -20,7 +20,7 @@ $ Password for 'https://username@github.com': personalAccessToken
 ```
 where ```username``` is your GitHub username.
 
-### Import Project (IntelliJ IDEA)
+### Import Project (IntelliJ IDEA + Maven)
 1. Open IntelliJ IDEA and click on ```File > New > Project from Existing Source...```
 2. Select ```minimal-hitting-set``` directory and click on ```Open``` button
 3. Install all dependencies and create the executable **_.jar_** by using the _Maven tool window_: click on ```Lifecycle > install``` ([Troubleshooting common Maven issues](https://www.jetbrains.com/help/idea/troubleshooting-common-maven-issues.html))
@@ -31,9 +31,33 @@ where ```username``` is your GitHub username.
  
 #### Syntax
 ```console
-java -jar minimal-hitting-set-maven-project-1.0.jar -in pathToInputMatrix
-```
+java -jar minimal-hitting-set-maven-project-1.0.jar 
+Options:
+    -h, --help
+      Print this help message and exit
+  * -in, --input-file
+      Absolute path of the input file .matrix
+    -out, --output-path
+      Absolute path of the output file (.out) with report information
+      Default: ~/output
+    -pe, --pre-elaboration
+      Compute the Pre-Elaboration before execute MBase procedure
+      Default: false
+  * -t, --timeout
+      Maximum time limit in seconds (s)
+      Default: 0
+    -v, --verbose
+      Print additional information on standard output
+      Default: false
 
+```
+_Note: options preceded by an asterisk are **required**._
+
+##### Example (MacOS/UNIX)
+The command below starts an execution with pre-elaboration, timeout of 60 seconds and the input matrix is stored at the following path: `/Users/user/benchmarks/example.matrix` 
+```console
+java -jar minimal-hitting-set-maven-project-1.0.jar -pe -t 60 -in /Users/user/benchmarks/example.matrix 
+```
 
 
 
