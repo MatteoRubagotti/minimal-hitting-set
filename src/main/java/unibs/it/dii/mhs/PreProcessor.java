@@ -28,9 +28,14 @@ public class PreProcessor {
     }
 
     public boolean[][] computePreProcessing(boolean[][] matrix) {
+        reset();
         boolean[][] newMatrix = removeRows(matrix);
-
         return removeCols(newMatrix);
+    }
+
+    private void reset() {
+        this.rowsToRemove.clear();
+        this.colsToRemove.clear();
     }
 
     /**
@@ -41,11 +46,14 @@ public class PreProcessor {
      */
     private boolean[][] removeRows(boolean[][] matrix) {
         int cols = matrix[0].length;
-        // Set object does not contain duplicates
+        // Create the object to collect all rows to removed (without duplicated)
         final Set<Integer> rowsToRemoveSet = new HashSet<>();
 
         for (int i = 0; i < matrix.length; i++) {
             for (int j = i + 1; j < matrix.length; j++) { // Compare with the all next rows of input matrix
+
+                if (rowsToRemoveSet.contains(i) || rowsToRemoveSet.contains(j)) // Rows is already added
+                    continue;
 
                 if(checkRow(matrix[i], matrix[j], cols) == -1)
                 {
@@ -82,6 +90,12 @@ public class PreProcessor {
         // Create the new input matrix with <= rows
         boolean[][] newMatrix = new boolean[matrix.length - rowsToRemove.size()][matrix[0].length];
 
+        resizeMatrixWithoutRowsRemoved(matrix, newMatrix);
+
+        return newMatrix;
+    }
+
+    private void resizeMatrixWithoutRowsRemoved(boolean[][] matrix, boolean[][] newMatrix) {
         for (int i = 0, rowCount = 0; i < matrix.length; i++) {
             if (rowsToRemove.contains(i)) { // Skip the row to store
                 continue;
@@ -91,8 +105,6 @@ public class PreProcessor {
             }
             ++rowCount;
         }
-
-        return newMatrix;
     }
 
     /**
@@ -174,6 +186,18 @@ public class PreProcessor {
 
         boolean[][] newInputMatrix = new boolean[matrix.length][matrix[0].length - colsToRemove.size()];
 
+        resizeMatrixWithoutColumnsRemoved(matrix, newInputMatrix);
+
+        return newInputMatrix;
+    }
+
+    /**
+     * Method to resize the matrix.
+     *
+     * @param matrix
+     * @param newInputMatrix
+     */
+    private void resizeMatrixWithoutColumnsRemoved(boolean[][] matrix, boolean[][] newInputMatrix) {
         for (int i = 0; i < matrix.length; i++) {
             for (int j = 0, colCount = 0; j < matrix[0].length; j++) {
                 if (!colsToRemove.contains(j)) {
@@ -181,8 +205,6 @@ public class PreProcessor {
                 }
             }
         }
-
-        return newInputMatrix;
     }
 
     /**

@@ -27,7 +27,7 @@ where ```username``` is your GitHub username.
 
 ### Execution
 1. Open a ```Terminal``` window
-2. `cd pathToProject/minimal-hitting-set/target/`
+2. `cd path/to/project/minimal-hitting-set/target/`
  
 #### Syntax
 ```console

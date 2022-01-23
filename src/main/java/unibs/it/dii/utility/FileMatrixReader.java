@@ -12,8 +12,8 @@ import org.apache.commons.io.FilenameUtils;
 
 public class FileMatrixReader {
 
-    private static final String MATRIX_EXTENSION = "matrix";
-    public static final String MSG_NO_SUCH_FILE_EXCEPTION = "Enter a correct absolute path for the input file matrix (-in)";
+    private static final String FILE_MATRIX_EXTENSION = "matrix";
+    public static final String MSG_NO_SUCH_FILE_EXCEPTION = "Enter a correct absolute path for the input file matrix";
     private final static String MSG_WRONG_FILE_EXTENSION = "The input file extension is not correct. Please choose .matrix file";
 
     public Matrix readMatrixFromFile(File file) throws IOException {
@@ -22,7 +22,7 @@ public class FileMatrixReader {
 
         try (Stream<String> stream = Files.lines(file.toPath())) {
 
-            if (!FilenameUtils.getExtension(file.getName()).equals(MATRIX_EXTENSION)) {
+            if (!FilenameUtils.getExtension(file.getName()).equals(FILE_MATRIX_EXTENSION)) {
                 System.err.println(MSG_WRONG_FILE_EXTENSION);
                 System.exit(-10);
             }
@@ -36,7 +36,7 @@ public class FileMatrixReader {
 
         } catch (NoSuchFileException fe) {
             System.err.println(MSG_NO_SUCH_FILE_EXCEPTION);
-            System.exit(1);
+            System.exit(-20);
         }
 
         return matrix;

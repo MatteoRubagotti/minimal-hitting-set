@@ -26,6 +26,11 @@ public class MinimalHittingSetSolver {
     private long maxCardinality = 0;
     private long executionTime = 0;
     private int numberMHSFound = 0;
+    private long consumedMemory = 0;
+
+    public long getConsumedMemory() {
+        return consumedMemory;
+    }
 
     public long getExecutionTime() {
         return executionTime;
@@ -56,30 +61,35 @@ public class MinimalHittingSetSolver {
     }
 
     /**
+     * Method to manage the solution of MHS problem.
+     *
      * @param matrix
      * @param timeout
      * @param runtime
      * @param outputFileWriter
      * @param debugMode
-     * @return
+     * @return The output matrix of the MHS found
      * @throws Exception
      */
-    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, boolean debugMode) throws Exception {
+    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, boolean debugMode, ArrayList<Integer> colsRemoved, int initialCols) throws Exception {
+        // Reset the variables for each method call
+        resetSolverVariables();
+
         // Create the output matrix object
         final Matrix mhsMatrix = new Matrix();
         // Object to create the matrix (boolean[][]) from an ArrayList
         final OutputMatrixBuilder outputMatrixBuilder = new OutputMatrixBuilder();
         // Object to build the information to write in the output file
-        final StringBuilder sbHeaderMBase = new StringBuilder();
+        StringBuilder sbHeaderMBase = new StringBuilder();
 
-        final boolean[][] inputBoolMatrix = matrix.getBoolMatrix();
+        boolean[][] inputBoolMatrix = matrix.getBoolMatrix();
 
         try {
 
             long startTimeMBase = System.currentTimeMillis();
 
             // List of all MHS found
-            final ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, debugMode);
+            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, debugMode, runtime);
 
             executionTime = System.currentTimeMillis() - startTimeMBase;
 
@@ -105,8 +115,10 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF MEMORY\n"));
 
+                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputBoolMatrix[0].length);
+
                 try {
-                    printMHSFoundUpToOutOfMemory(mhsList, timeout, outputFileWriter);
+                    printMHSFoundUpToInterruption(mhsBoolMatrix, timeout, outputFileWriter, colsRemoved, initialCols);
                 } catch (OutOfMemoryError me) {
                     outOfMemory = true;
                     System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY\n");
@@ -120,8 +132,10 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF TIME");
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF TIME\n"));
 
+                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputBoolMatrix[0].length);
+
                 try {
-                    printMHSFoundUpToTimeout(mhsList, timeout, outputFileWriter);
+                    printMHSFoundUpToInterruption(mhsBoolMatrix, timeout, outputFileWriter, colsRemoved, initialCols);
                 } catch (OutOfMemoryError me) {
                     System.err.println("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY");
                     outputFileWriter.writeOutputFile(new StringBuilder("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY\n"));
@@ -150,6 +164,19 @@ public class MinimalHittingSetSolver {
         }
 
         return mhsMatrix;
+    }
+
+    /**
+     * Method to reset the internal state of the solver.
+     */
+    private void resetSolverVariables() {
+        this.outOfMemory = false;
+        this.outOfTime = false;
+        this.numberMHSFound = 0;
+        this.executionTime = 0;
+        this.maxCardinality = 0;
+        this.minCardinality = 0;
+        this.consumedMemory = 0;
     }
 
     /**
@@ -218,24 +245,24 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * @param mhsList
+     * @param matrix
      * @param timeout
      * @param outputFileWriter
+     * @param colsRemoved
+     * @param initialCols
      * @throws IOException
      */
-    private void printMHSFoundUpToTimeout(ArrayList<boolean[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < mhsList.size(); i++) {
-            boolean[] mhs = mhsList.get(i);
-            for (int j = 0; j < mhs.length; j++) {
-                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
-            }
-            sb.append("-\n");
-        }
+    private void printMHSFoundUpToInterruption(boolean[][] matrix, long timeout, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
+//        for (int i = 0; i < mhsList.size(); i++) {
+//            boolean[] mhs = mhsList.get(i);
+//            for (int j = 0; j < mhs.length; j++) {
+//                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
+//            }
+//            sb.append("-\n");
+//        }
 
         try {
-            outputFileWriter.writeOutputFile(sb);
+            outputFileWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
         } catch (OutOfMemoryError me) {
             outOfMemory = true;
             outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
@@ -262,9 +289,10 @@ public class MinimalHittingSetSolver {
      *
      * @param boolMatrix The input matrix from benchmark file (e.g. ####.####.matrix)
      * @param timeout    The maximum time limit
+     * @param runtime
      * @return The list of MHS found
      */
-    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, boolean debugMode) throws Exception {
+    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, boolean debugMode, Runtime runtime) throws Exception {
         final int rows = boolMatrix.length; // N = number of rows
         final int cols = boolMatrix[0].length; // number of columns = X <= M
 
@@ -323,7 +351,8 @@ public class MinimalHittingSetSolver {
                 } catch (OutOfMemoryError me) {
                     System.err.println("Execution interrupted > Cause: OUT OF MEMORY");
                     outOfMemory = true;
-                    queue.clear(); // more free space
+                    consumedMemory = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+                    queue.clear(); // More free memory space
 
                     // Return the MHS computed until memory saturation
                     return mhsList;
@@ -336,10 +365,16 @@ public class MinimalHittingSetSolver {
 
         if ((endTime - startTime) > timeout) {
             outOfTime = true;
-            queue.clear(); // more free space
+            consumedMemory = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+            queue.clear(); // More free memory space
+
+            return mhsList;
         }
 
-        // Return the MHS computed anyway
+        consumedMemory = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+        queue.clear();
+
+        // Return the list of MHS computed anyway
         return mhsList;
     }
 

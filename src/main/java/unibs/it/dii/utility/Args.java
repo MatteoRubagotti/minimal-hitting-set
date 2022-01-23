@@ -2,7 +2,6 @@ package unibs.it.dii.utility;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.converters.PathConverter;
-import org.apache.commons.io.FileUtils;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,7 +43,7 @@ public class Args {
     }
 
     @Parameter(
-            names = {"-pe", "--pre-elaboration"},
+            names = {"-pe", "-pre", "--pre-elaboration"},
             description = "Compute the Pre-Elaboration before execute MBase procedure"
     )
 
@@ -57,20 +56,41 @@ public class Args {
     @Parameter(
             names = {"-in", "--input-file"},
             description = "Absolute path of the input file .matrix",
-            converter = PathConverter.class,
-            required = true
+            converter = PathConverter.class
     )
 
-    private Path inputPath;
+    private Path inputPath = Paths.get("");
 
     public Path getInputPath() {
         return inputPath;
     }
 
+    public boolean isManualMode() {
+        return inputPath.toString().length() > 0;
+    }
+
+    @Parameter(
+            names = {"-d", "-dir", "--directory"},
+            description = "Absolute path of the directory that contains benchmark files",
+            converter = PathConverter.class,
+            validateWith = BenchmarkFilesDirectoryValidator.class
+    )
+
+    private Path directoryPath = Paths.get("");
+
+    public Path getDirectoryPath() {
+        return directoryPath;
+    }
+
+    public boolean isAutomaticMode() {
+        return directoryPath.toString().length() > 0;
+    }
+
     @Parameter(
             names = {"-out", "--output-path"},
             description = "Absolute path of the output file (.out) with report information",
-            converter = PathConverter.class
+            converter = PathConverter.class,
+            validateWith = OutputDirectoryValidator.class
     )
 
     private Path outputPath = Paths.get(System.getProperty("user.home") + "/output");

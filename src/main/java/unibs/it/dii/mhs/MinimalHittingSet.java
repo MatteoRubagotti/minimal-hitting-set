@@ -2,16 +2,11 @@ package unibs.it.dii.mhs;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
-import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import unibs.it.dii.mhs.model.Matrix;
-import unibs.it.dii.utility.Args;
-import unibs.it.dii.utility.FileMatrixReader;
-import unibs.it.dii.utility.OutputCSVWriter;
-import unibs.it.dii.utility.OutputFileWriter;
+import unibs.it.dii.utility.*;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,7 +15,10 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
 import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 
 public class MinimalHittingSet {
 
@@ -28,7 +26,7 @@ public class MinimalHittingSet {
     final static private String DOUBLE_LINE = "=========================================================================";
     final static private String LINE = "-------------------------------------------------------------------------";
     final static private String HEADER = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
-    
+
     final static private String MSG_READING_MATRIX_FILE = "\t\t\t\tReading .matrix file...";
     final static private String MSG_PRE_PROCESSING_RUNNING = "\t\t\t\tRun Pre-Processing...";
     final static private String MSG_MBASE_EXECUTION = "\t\t\t\tMBase Execution...";
@@ -38,7 +36,7 @@ public class MinimalHittingSet {
 
     final static private String CSV_HEADER = "Date-Time,Matrix,Execution time Pre-Elaboration (ms),Pre-Elaboration RAM (MB),Rows removed,Cols removed,Execution time MBase (ms),MBase RAM (MB),Out of Time,Out of Memory,Rows,Columns,Cardinality Min,Cardinality Max,#MHS";
 
-    final static private String DATE_TIME = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"));
+//    final static private String DATE_TIME = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"));
 
     private static final long MEGABYTE = 1024L * 1024L;
     private static final long MILLISECONDS = 1000;
@@ -77,22 +75,19 @@ public class MinimalHittingSet {
         final boolean verbose = arguments.isVerbose();
         final Path inputPath = arguments.getInputPath();
         final Path outputPath = arguments.getOutputPath();
+        final Path directoryPath = arguments.getDirectoryPath();
         final long timeout = getMillis(arguments.getTimeout());
+
+        if (invalidArgumentsCondition(arguments)) {
+            System.err.println("Please choose only one argument between -in or -dir");
+            jc.usage();
+            System.exit(-1);
+        }
 
         if (verbose)
             System.out.println("Max memory available: " + bytesToMegaBytes(Runtime.getRuntime().maxMemory()) + " MB");
 
         final Path csvPath = Paths.get(PATH_TO_CSV + "/" + CSV_FILE_NAME);
-
-        // Object to build the CSV report information
-        final StringJoiner stringJoiner = new StringJoiner(",");
-        stringJoiner.add(DATE_TIME); // Add the first column value, namely the date-time information
-
-        // Create the matrix reader
-        final FileMatrixReader reader = new FileMatrixReader();
-        // Create the writer for the output report information
-        final OutputFileWriter outputFileWriter = new OutputFileWriter();
-
         // Create CSV writer object
         final OutputCSVWriter csvWriter = new OutputCSVWriter();
 
@@ -100,7 +95,12 @@ public class MinimalHittingSet {
 
         checkOutputPath(outputPath);
 
-        // Get the Java runtime for memory (RAM) consumption
+        // Create the matrix reader
+        final FileMatrixReader reader = new FileMatrixReader();
+        // Create the writer for the output report information
+        final OutputFileWriter outputFileWriter = new OutputFileWriter();
+
+        // Get the Java run-time for memory (RAM) consumption
         Runtime runtime = Runtime.getRuntime();
         // Run the garbage collector
         runtime.gc();
@@ -111,118 +111,137 @@ public class MinimalHittingSet {
         // Create the solver object
         final MinimalHittingSetSolver solver = new MinimalHittingSetSolver();
 
-        // Create the input file object
-        final File inputFile = inputPath.toFile();
+        // List of benchmark files
+        final List<String> benchmarkFileList = new ArrayList<>();
 
-        System.out.println(DOUBLE_LINE);
-        System.out.println(MSG_READING_MATRIX_FILE);
-        System.out.println(DOUBLE_LINE);
+        if (arguments.isAutomaticMode()) {
+            BenchmarkDirectoryReader directoryReader = new BenchmarkDirectoryReader(directoryPath);
+            Queue<String> benchmarkFileQueue = directoryReader.getListBenchmarkFileMatrix();
 
-        // Create the matrix object
-        final Matrix inputMatrix = reader.readMatrixFromFile(inputFile);
-
-        System.out.println("Input Matrix:");
-        printBoolMatrix(inputMatrix.getBoolMatrix(), true, true);
-
-        // Get the size of initial input matrix
-        final int initialRows = inputMatrix.getBoolMatrix().length;
-        final int initialCols = inputMatrix.getBoolMatrix()[0].length;
-
-        printInputMatrixInformation(inputMatrix);
-        stringJoiner.add(inputMatrix.getName());
-
-        // Set the default value for the pre-processing time/memory
-        long preProcessingTime = -1;
-        long memory = -1;
-
-        // Object to create the header of the output report file
-        StringBuilder headerOutputBuilder = new StringBuilder();
-
-        buildOutputHeader(headerOutputBuilder, inputMatrix.getName(), initialRows, initialCols, timeout);
-
-        // Create the object to compute the pre-processing operation
-        final PreProcessor preProcess = new PreProcessor(debugMode);
-
-        if (preProcessing) {
-            System.out.println(DOUBLE_LINE);
-            System.out.println(MSG_PRE_PROCESSING_RUNNING);
-            System.out.println(DOUBLE_LINE);
-
-            if (debugMode)
-                printUsedMemory(verbose, runtime, "Consumed memory before Pre-Processing: ");
-
-            // Pre-Processing execution
-            long startTimePP = System.currentTimeMillis();
-            boolean[][] newInputIntMatrix = preProcess.computePreProcessing(inputMatrix.getBoolMatrix());
-            long endTimePP = System.currentTimeMillis();
-
-            memory = printUsedMemory(verbose, runtime, "Consumed memory (Pre-Processing): ");
-
-            // Compute the time to execute the pre-processing operation
-            preProcessingTime = endTimePP - startTimePP;
-
-            buildPreProcessingInformation(preProcess, newInputIntMatrix, preProcessingTime, verbose, debugMode, headerOutputBuilder, memory);
-
-            // Set the new input matrix after pre-processing
-            inputMatrix.getBoolMatrix(newInputIntMatrix);
-        }
-
-        addPreProcessingInformationToStringJoiner(stringJoiner, preProcessingTime, memory, preProcess);
-
-        System.out.println(DOUBLE_LINE);
-        System.out.println(MSG_MBASE_EXECUTION);
-        System.out.println(DOUBLE_LINE);
-
-        if (verbose) {
-            System.out.println(LINE);
-            System.out.println("\t\t\tInitial memory available: " + bytesToMegaBytes(runtime.totalMemory()) + "MB");
-            System.out.println(LINE);
+            while (!benchmarkFileQueue.isEmpty())
+                benchmarkFileList.add(benchmarkFileQueue.poll());
+        } else {
+            benchmarkFileList.add(inputPath.toString());
         }
 
         if (debugMode)
-            printUsedMemory(verbose, runtime, "Consumed memory before MBase execution: ");
+            benchmarkFileList.stream().forEach(s -> System.out.println(s));
 
-        // Create the output file to save report information
-        File outputFile = getOutputFile(preProcessing, outputPath, outputFileWriter, inputMatrix.getName());
+        printStartingMessage(benchmarkFileList);
 
-        // Write header information + [Pre-Processing report : optional] in the output report information
-        outputFileWriter.writeOutputFile(headerOutputBuilder);
-
-        // Compute the residual time to execute MBase
-        long residualTime = timeout - (preProcessingTime);
-
-        // Execution of MBase procedure
-        long startTimeMBase = System.currentTimeMillis();
-        final Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix, residualTime, runtime, outputFileWriter, debugMode);
-        long endTimeMBase = System.currentTimeMillis();
-
-        // Execution time of MBase procedure
-        long executionTimeMBase = solver.getExecutionTime();
-
-        // Consumed memory after MBase execution
-        long memoryAfterMBase = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
-
-        addMBaseInformationToStringJoiner(stringJoiner, solver.getNumberMHSFound(), solver, initialRows, initialCols, executionTimeMBase, memoryAfterMBase);
-
-        writeCSVInformationReport(csvPath.toFile().toString(), stringJoiner, csvWriter);
-
-        // Object to build the output report information about MBase execution
-        StringBuilder sbReportMBase = new StringBuilder();
-
-        // MBase execution (or building the output matrix) did not exceed the maximum RAM size
-        if (!solver.isOutOfMemory()) {
-
-            buildMBaseReportInformation(outputMatrix, executionTimeMBase, memoryAfterMBase, sbReportMBase, solver.getMinCardinality(), solver.getMaxCardinality());
-
-            try {
-                outputMatrixToStringBuilder(sbReportMBase, outputMatrix.getBoolMatrix(), preProcess.getRowsToRemove(), preProcess.getColsToRemove(), initialCols, outputFileWriter, verbose);
-            } catch (OutOfMemoryError me) {
-                System.err.println("String building output matrix failed > Cause: OUT OF MEMORY");
-                outputFileWriter.writeOutputFile(new StringBuilder("String building output matrix failed > Cause: OUT OF MEMORY\n"));
+        for (int i = 0; i < benchmarkFileList.size(); i++) {
+            if (i > 0) {
+                System.out.println("Remaining benchmark files to process: " + (benchmarkFileList.size() - i));
+                TimeUnit.SECONDS.sleep(1);
             }
 
-            if (verbose)
-                System.out.println("MBase execution time: " + executionTimeMBase + " ms");
+            // Object to build the CSV report information
+            StringJoiner stringJoiner = new StringJoiner(",");
+            // Add the first column value, namely the date-time information
+            stringJoiner.add(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss")));
+
+            // Create the input file object
+            final File inputFile = new File(benchmarkFileList.get(i));
+
+            System.out.println(DOUBLE_LINE);
+            System.out.println(MSG_READING_MATRIX_FILE);
+            System.out.println(DOUBLE_LINE);
+
+            // Create the matrix object
+            final Matrix inputMatrix = reader.readMatrixFromFile(inputFile);
+
+            if (verbose) {
+                System.out.println("Input Matrix:");
+                printBoolMatrix(inputMatrix.getBoolMatrix(), true, true);
+            }
+
+            // Get the size of initial input matrix
+            final int initialRows = inputMatrix.getBoolMatrix().length;
+            final int initialCols = inputMatrix.getBoolMatrix()[0].length;
+
+            printInputMatrixInformation(inputMatrix);
+            stringJoiner.add(inputMatrix.getName());
+
+            // Set the default value for the pre-processing time/memory
+            long preProcessingTime = 0;
+            long memory = -1;
+
+            // Object to create the header of the output report file
+            StringBuilder headerOutputBuilder = new StringBuilder();
+
+            buildOutputHeader(headerOutputBuilder, inputMatrix.getName(), initialRows, initialCols, timeout);
+
+            // Create the object to compute the pre-processing operation
+            final PreProcessor preProcess = new PreProcessor(debugMode);
+
+            if (preProcessing) {
+                System.out.println(DOUBLE_LINE);
+                System.out.println(MSG_PRE_PROCESSING_RUNNING);
+                System.out.println(DOUBLE_LINE);
+
+                if (debugMode)
+                    printUsedMemory(verbose, runtime, "Consumed memory before Pre-Processing: ");
+
+                // Pre-Processing execution
+                long startTimePP = System.currentTimeMillis();
+                boolean[][] newInputIntMatrix = preProcess.computePreProcessing(inputMatrix.getBoolMatrix());
+                long endTimePP = System.currentTimeMillis();
+
+                memory = printUsedMemory(verbose, runtime, "Consumed memory (Pre-Processing): ");
+
+                // Compute the time to execute the pre-processing operation
+                preProcessingTime = endTimePP - startTimePP;
+
+                buildPreProcessingInformation(preProcess, newInputIntMatrix, preProcessingTime, verbose, debugMode, headerOutputBuilder, memory);
+
+                // Set the new input matrix after pre-processing
+                inputMatrix.getBoolMatrix(newInputIntMatrix);
+            }
+
+            addPreProcessingInformationToStringJoiner(stringJoiner, preProcessingTime, memory, preProcess);
+
+            System.out.println(DOUBLE_LINE);
+            System.out.println(MSG_MBASE_EXECUTION);
+            System.out.println(DOUBLE_LINE);
+
+            if (verbose) {
+                System.out.println(LINE);
+                System.out.println("\t\t\tInitial memory available: " + bytesToMegaBytes(runtime.totalMemory()) + "MB");
+                System.out.println(LINE);
+            }
+
+            if (debugMode)
+                printUsedMemory(verbose, runtime, "Consumed memory before MBase execution: ");
+
+            // Create the output file to save report information
+            File outputFile = getOutputFile(preProcessing, outputPath, outputFileWriter, inputMatrix.getName());
+
+            // Write header information + [Pre-Processing report : optional] in the output report information
+            outputFileWriter.writeOutputFile(headerOutputBuilder);
+
+            // Compute the residual time to execute MBase
+            long residualTime = timeout - preProcessingTime;
+
+            // Execution of MBase procedure
+            long startTimeMBase = System.currentTimeMillis();
+            Matrix outputMatrix = solver.computeMinimalHittingSets(inputMatrix, residualTime, runtime, outputFileWriter, debugMode, preProcess.getColsToRemove(), initialCols);
+            long endTimeMBase = System.currentTimeMillis();
+
+            // Execution time of MBase procedure
+            long executionTimeMBase = solver.getExecutionTime();
+
+            // Consumed memory after MBase execution
+            long memoryAfterMBase = solver.getConsumedMemory();
+
+            addMBaseInformationToStringJoiner(stringJoiner, solver.getNumberMHSFound(), solver, initialRows, initialCols, executionTimeMBase, memoryAfterMBase);
+
+            // Object to build the output report information about MBase execution
+            StringBuilder sbReportMBase = new StringBuilder();
+
+            // MBase execution (or building the output matrix) did not exceed the maximum RAM size
+//            if (!solver.isOutOfMemory()) {
+
+            buildMBaseReportInformation(outputMatrix, executionTimeMBase, memoryAfterMBase, sbReportMBase, solver.getMinCardinality(), solver.getMaxCardinality());
 
             // Write information about MBase execution on the output file
             System.out.println(DOUBLE_LINE);
@@ -232,17 +251,45 @@ public class MinimalHittingSet {
             outputFileWriter.writeOutputFile(sbReportMBase);
 
             try {
+                outputMatrixToStringBuilder(outputMatrix.getBoolMatrix(), preProcess.getRowsToRemove(), preProcess.getColsToRemove(), initialCols, outputFileWriter, verbose);
+            } catch (OutOfMemoryError me) {
+                System.err.println("String building output matrix failed > Cause: OUT OF MEMORY");
+                outputFileWriter.writeOutputFile(new StringBuilder("String building output matrix failed > Cause: OUT OF MEMORY\n"));
+            }
+
+            if (verbose)
+                System.out.println("MBase execution time: " + executionTimeMBase + " ms");
+
+            try {
                 printOutputInformation(outputMatrix, initialCols, preProcess.getRowsToRemove(), preProcess.getColsToRemove(), debugMode, verbose, solver.getMinCardinality(), solver.getMaxCardinality());
             } catch (OutOfMemoryError me) {
-//                System.err.println(me.toString());
                 System.err.println("Impossible to write output matrix on file .out > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write output matrix on file .out > Cause: OUT OF MEMORY\n"));
-//                System.exit(200);
             }
+
+            outputMatrix.setBoolMatrix(null);
+            // Call the garbage collector
+            System.gc();
+
+            // Print the final message on standard output
+            System.out.println("For more details: " + outputFile.getAbsolutePath());
+            writeCSVInformationReport(csvPath.toFile().toString(), stringJoiner, csvWriter);
         }
 
-        // Print the final message on standard output
-        System.out.println("For more details: " + outputFile.getAbsolutePath());
+    }
+
+    private void printStartingMessage(List<String> benchmarkFileList) throws InterruptedException {
+        System.out.println("Number of benchmark file to process: " + benchmarkFileList.size());
+        System.out.print("Starting");
+        for (int i = 0; i < 3; ++i) {
+            TimeUnit.MILLISECONDS.sleep(500);
+            System.out.print(".");
+        }
+        System.out.println();
+    }
+
+    private boolean invalidArgumentsCondition(Args args) {
+        return (args.isManualMode() && args.isAutomaticMode()) || (!args.isManualMode() && !args.isAutomaticMode());
     }
 
     private void writeCSVInformationReport(String pathString, StringJoiner stringJoiner, OutputCSVWriter csvWriter) throws IOException {
@@ -339,17 +386,14 @@ public class MinimalHittingSet {
 
         if (!Files.exists(csvPath)) { // The file .csv does not exist
             Files.createFile(csvPath);
-            writer.setWriter(new CSVWriter(new FileWriter(csvPath.toFile().toString(), true)));
-            writer.setReader(new CSVReader(new FileReader(csvPath.toFile().toString()))); // Not used yet!
-
-            // Create the header of csv
-            writer.writeHeaderCSV(CSV_HEADER.split(","));
-
-            return;
         }
 
-        writer.setWriter(new CSVWriter(new FileWriter(csvPath.toFile().toString(), true)));
-        writer.setReader(new CSVReader(new FileReader(csvPath.toFile().toString()))); // Not used yet!
+        if (csvPath.toFile().length() == 0) {
+            writer.setWriter(new CSVWriter(new FileWriter(csvPath.toFile().toString(), true)));
+//            writer.setReader(new CSVReader(new FileReader(csvPath.toFile().toString()))); // Not used yet!
+            // Create the header of csv
+            writer.writeCSV(CSV_HEADER.split(","));
+        }
     }
 
     /**
@@ -363,7 +407,6 @@ public class MinimalHittingSet {
      * @param maxCard
      */
     private void buildMBaseReportInformation(Matrix outputMatrix, long executionTime, long memoryAfter, StringBuilder sb, long minCard, long maxCard) {
-//        sb.append("Execution time MBase: ").append(executionTime).append(" ms").append("\n");
         sb.append(LINE).append("\n");
         sb.append("Output Matrix:").append("\n");
     }
@@ -378,7 +421,7 @@ public class MinimalHittingSet {
      * @param timeout
      */
     private void buildOutputHeader(StringBuilder sb, String fileName, int initialRows, int initialCols, long timeout) {
-        sb.append(";;; ").append(DATE_TIME).append("\n");
+        sb.append(";;; ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"))).append("\n");
         sb.append(HEADER + "\n");
         sb.append("\t\t\tMatrix ").append(fileName).append("\n");
         sb.append(HEADER + "\n");
@@ -529,10 +572,10 @@ public class MinimalHittingSet {
      */
     private long printUsedMemory(boolean verbose, Runtime runtime, String s) {
         long memoryAfter = 0;
-        if (verbose) {
-            memoryAfter = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+        memoryAfter = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+
+        if (verbose)
             System.out.println(s + (memoryAfter) + "MB");
-        }
 
         return memoryAfter;
     }
@@ -540,19 +583,20 @@ public class MinimalHittingSet {
     /**
      * Method to build the matrix with the correct number of the initial input matrix columns.
      *
-     * @param sb
      * @param matrix
      * @param rowsRemoved
      * @param colsRemoved
      * @param initialCols
      * @param outputWriter
+     * @param verbose
      * @throws IOException
      */
-    private void outputMatrixToStringBuilder(StringBuilder sb, boolean[][] matrix, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, int initialCols, OutputFileWriter outputWriter, boolean verbose) throws IOException {
+    private void outputMatrixToStringBuilder(boolean[][] matrix, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, int initialCols, OutputFileWriter outputWriter, boolean verbose) throws IOException {
         try {
             System.out.println(DOUBLE_LINE);
             System.out.println("\t\t\t\tWriting the output matrix...");
             System.out.println(DOUBLE_LINE);
+
             if (rowsRemoved.isEmpty() && colsRemoved.isEmpty()) {
                 outputWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
                 return;
@@ -566,7 +610,7 @@ public class MinimalHittingSet {
             System.err.println("Memory consumed: " + bytesToMegaBytes(Runtime.getRuntime().totalMemory()) + "MB");
             outputWriter.writeOutputFile(new StringBuilder("Impossible to build the matrix string > Cause : OUT OF MEMORY"));
 
-            System.exit(200);
+//            System.exit(200);
         }
 
     }

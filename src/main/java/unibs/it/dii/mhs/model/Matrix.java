@@ -1,6 +1,7 @@
 package unibs.it.dii.mhs.model;
 
 public class Matrix {
+
     private boolean[][] boolMatrix;
     private String name;
 
@@ -10,6 +11,10 @@ public class Matrix {
 
     public Matrix() {
 
+    }
+
+    public void setBoolMatrix(boolean[][] boolMatrix) {
+        this.boolMatrix = boolMatrix;
     }
 
     public boolean[][] getBoolMatrix() {

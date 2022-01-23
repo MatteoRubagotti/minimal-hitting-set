@@ -26,15 +26,11 @@ public class OutputCSVWriter {
         this.writer = writer;
     }
 
-    public void writeHeaderCSV(String[] headers) throws IOException {
+    public void writeCSV(String[] s) throws IOException {
         // Write the header of CSV
-        writer.writeNext(headers);
+        writer.writeNext(s);
 
         // Close the writer
         writer.close();
-    }
-
-    public void writeCSV(String[] split) throws IOException {
-        writeHeaderCSV(split);
     }
 }
