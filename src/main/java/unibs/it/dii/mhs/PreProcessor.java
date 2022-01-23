@@ -1,7 +1,11 @@
 package unibs.it.dii.mhs;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import com.google.common.primitives.Booleans;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public class PreProcessor {
 
@@ -23,8 +27,9 @@ public class PreProcessor {
         this.debug = debug;
     }
 
-    public int[][] computePreProcessing(int[][] matrix) {
-        int[][] newMatrix = removeRows(matrix);
+    public boolean[][] computePreProcessing(boolean[][] matrix) {
+        boolean[][] newMatrix = removeRows(matrix);
+
         return removeCols(newMatrix);
     }
 
@@ -34,21 +39,40 @@ public class PreProcessor {
      * @param matrix
      * @return
      */
-    private int[][] removeRows(int[][] matrix) {
+    private boolean[][] removeRows(boolean[][] matrix) {
         int cols = matrix[0].length;
         // Set object does not contain duplicates
         final Set<Integer> rowsToRemoveSet = new HashSet<>();
 
         for (int i = 0; i < matrix.length; i++) {
             for (int j = i + 1; j < matrix.length; j++) { // Compare with the all next rows of input matrix
+
+                if(checkRow(matrix[i], matrix[j], cols) == -1)
+                {
+                    if (debug) {
+                        System.out.println("Row" + i + ": " + Arrays.toString(matrix[i]) + "\nRow" + j + ": " + Arrays.toString(matrix[j]));
+                        System.out.println("do not remove");
+                    }
+                }
+
                 if (checkRow(matrix[i], matrix[j], cols) == 1 || checkRow(matrix[i], matrix[j], cols) == 0) // N_j is a subset of N_i or are the same (check=0)
                 {
+                    if (debug) {
+                        System.out.println("Row" + i + ": " + Arrays.toString(matrix[i]) + "\nRow" + j + ": " + Arrays.toString(matrix[j]));
+                        System.out.println("remove row" + i);
+                    }
                     rowsToRemoveSet.add(i);
                     continue;
                 }
 
                 if (checkRow(matrix[i], matrix[j], cols) == 2) // N_i is a subset of N_j
+                {
+                    if (debug) {
+                        System.out.println("Row" + i + ": " + Arrays.toString(matrix[i]) + "\nRow" + j + ": " + Arrays.toString(matrix[j]));
+                        System.out.println("remove row" + j);
+                    }
                     rowsToRemoveSet.add(j);
+                }
             }
         }
 
@@ -56,7 +80,7 @@ public class PreProcessor {
         rowsToRemove.addAll(rowsToRemoveSet); // Update the list with the rows removed
 
         // Create the new input matrix with <= rows
-        int[][] newMatrix = new int[matrix.length - rowsToRemove.size()][matrix[0].length];
+        boolean[][] newMatrix = new boolean[matrix.length - rowsToRemove.size()][matrix[0].length];
 
         for (int i = 0, rowCount = 0; i < matrix.length; i++) {
             if (rowsToRemove.contains(i)) { // Skip the row to store
@@ -80,11 +104,11 @@ public class PreProcessor {
      * @param cols The number of columns to compare
      * @return 1 -> row2 < row1, 2 -> row1 < row2, -1 -> row1 <> row2, 0 -> row1 == row2
      */
-    private int checkRow(int[] row1, int[] row2, int cols) {
+    private int checkRow(boolean[] row1, boolean[] row2, int cols) {
         int check = 0; // row1 == row2
 
         for (int i = 0; i < cols; i++) {
-            if (row1[i] == 1 && row2[i] == 0) {
+            if (row1[i] && !row2[i]) {
                 if (check == 2) {
                     check = -1;
                     break;
@@ -93,7 +117,8 @@ public class PreProcessor {
                     continue;
                 }
             }
-            if (row1[i] == 0 && row2[i] == 1) {
+
+            if (!row1[i] && row2[i]) {
                 if (check == 1) {
                     check = -1;
                     break;
@@ -109,17 +134,17 @@ public class PreProcessor {
     /**
      * Method to print the matrix.
      *
-     * @param intMatrix
+     * @param boolMatrix
      */
-    private void printMatrix(int[][] intMatrix) {
+    private void printBoolMatrix(boolean[][] boolMatrix) {
         if (!debug) {
             return;
         }
 
-        System.out.println("Size: " + intMatrix.length + "x" + intMatrix[0].length);
-        for (int[] intCol : intMatrix) {
-            for (int j = 0; j < intMatrix[0].length; j++) {
-                System.out.print(intCol[j] + " "); // Print each row of the matrix
+        System.out.println("Size: " + boolMatrix.length + "x" + boolMatrix[0].length);
+        for (boolean[] col : boolMatrix) {
+            for (int j = 0; j < boolMatrix[0].length; j++) {
+                System.out.print(col[j] ? 1 + " " : 0 + " "); // Print each row of the matrix
             }
             System.out.println("-"); // Print the end of a row
         }
@@ -131,10 +156,13 @@ public class PreProcessor {
      * @param matrix
      * @return
      */
-    private int[][] removeCols(int[][] matrix) {
-        int[][] transposeMatrix = transpose(matrix);
-        if (debug)
-            printMatrix(transposeMatrix);
+    private boolean[][] removeCols(boolean[][] matrix) {
+        boolean[][] transposeMatrix = transpose(matrix);
+
+        if (debug) {
+            System.out.println("Transpose Matrix:");
+            printBoolMatrix(transposeMatrix);
+        }
 
         int rows = transposeMatrix.length; // REMEMBER: matrix is transposed!
         final Set<Integer> rowsToRemove = new HashSet<>();
@@ -144,7 +172,7 @@ public class PreProcessor {
                 colsToRemove.add(i);
         }
 
-        int[][] newInputMatrix = new int[matrix.length][matrix[0].length - colsToRemove.size()];
+        boolean[][] newInputMatrix = new boolean[matrix.length][matrix[0].length - colsToRemove.size()];
 
         for (int i = 0; i < matrix.length; i++) {
             for (int j = 0, colCount = 0; j < matrix[0].length; j++) {
@@ -163,8 +191,8 @@ public class PreProcessor {
      * @param matrix
      * @return
      */
-    private int[][] transpose(int[][] matrix) {
-        int[][] transposeMatrix = new int[matrix[0].length][matrix.length];
+    private boolean[][] transpose(boolean[][] matrix) {
+        boolean[][] transposeMatrix = new boolean[matrix[0].length][matrix.length];
 
         for (int i = 0; i < matrix.length; i++) {
             for (int j = 0; j < matrix[0].length; j++) {
@@ -176,19 +204,20 @@ public class PreProcessor {
     }
 
     /**
-     * Method to check if the col selected is empty.
+     * Method to check if the column (col) selected is empty.
      *
      * @param col
      * @param numCol
      * @return
      */
-    private boolean colIsEmpty(int[] col, int numCol) {
-        ArrayList<Integer> colList = (ArrayList<Integer>) Arrays.stream(col).boxed().collect(Collectors.toList());
+    private boolean colIsEmpty(boolean[] col, int numCol) {
+        int count = 0;
+        for (boolean b : col) if (b) count++;
 
         if (debug)
-            System.out.println("col" + numCol + ": " + colList.toString() + "\nisEmpty: " + !colList.contains(1));
+            System.out.println("Column" + numCol + ": " + Booleans.asList(col).toString() + "\nisEmpty: " + (count == 0));
 
-        return !colList.contains(1);
+        return (count == 0);
     }
 
 }

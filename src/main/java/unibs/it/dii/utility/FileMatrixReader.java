@@ -27,12 +27,12 @@ public class FileMatrixReader {
                 System.exit(-10);
             }
 
-            final int[][] intMatrix = stream
+            final boolean[][] boolMatrix = stream
                     .filter(line -> !line.startsWith(";")) // remove comments
                     .map(this::readRow) // read each row of the matrix
-                    .toArray(int[][]::new);
+                    .toArray(boolean[][]::new);
 
-            matrix.setIntMatrix(intMatrix);
+            matrix.getBoolMatrix(boolMatrix);
 
         } catch (NoSuchFileException fe) {
             System.err.println(MSG_NO_SUCH_FILE_EXCEPTION);
@@ -42,13 +42,13 @@ public class FileMatrixReader {
         return matrix;
     }
 
-    private int[] readRow(String s) {
+    private boolean[] readRow(String s) {
         final String[] rowString = s.split(" ");
-        int[] row = new int[rowString.length - 1]; // exclude '-' (i.e. end of the line/row)
+        boolean[] row = new boolean[rowString.length - 1]; // exclude '-' (i.e. end of the line/row)
         int count = 0;
 
         for (int j = 0; j < row.length; j++) {
-            row[count++] = Integer.parseInt(rowString[j]);
+            row[count++] =  Integer.parseInt(rowString[j]) == 1;
         }
 
         return row;

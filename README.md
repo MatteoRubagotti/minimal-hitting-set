@@ -45,7 +45,7 @@ Options:
       Default: false
   * -t, --timeout
       Maximum time limit in seconds (s)
-      Default: 0
+      Default0 + " "
     -v, --verbose
       Print additional information on standard output
       Default: false

@@ -14,7 +14,7 @@ public class Args {
             help = true
     )
 
-    private boolean help = false;
+    boolean help = false;
 
     public boolean isHelp() {
         return help;

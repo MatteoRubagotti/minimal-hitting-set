@@ -1,5 +1,6 @@
 package unibs.it.dii.mhs;
 
+import com.google.common.primitives.Booleans;
 import unibs.it.dii.mhs.model.Matrix;
 import unibs.it.dii.mhs.model.SubMatrix;
 import unibs.it.dii.utility.OutputFileWriter;
@@ -7,7 +8,6 @@ import unibs.it.dii.utility.OutputMatrixBuilder;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.lang.Integer.min;
 import static unibs.it.dii.mhs.MinimalHittingSet.bytesToMegaBytes;
@@ -25,7 +25,7 @@ public class MinimalHittingSetSolver {
     private long minCardinality = 0;
     private long maxCardinality = 0;
     private long executionTime = 0;
-    private int mhsFound = 0;
+    private int numberMHSFound = 0;
 
     public long getExecutionTime() {
         return executionTime;
@@ -35,8 +35,8 @@ public class MinimalHittingSetSolver {
         this.executionTime = getExecutionTime;
     }
 
-    public int getMhsFound() {
-        return mhsFound;
+    public int getNumberMHSFound() {
+        return numberMHSFound;
     }
 
     public long getMinCardinality() {
@@ -55,35 +55,46 @@ public class MinimalHittingSetSolver {
         return outOfMemory;
     }
 
+    /**
+     * @param matrix
+     * @param timeout
+     * @param runtime
+     * @param outputFileWriter
+     * @param debugMode
+     * @return
+     * @throws Exception
+     */
     public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, boolean debugMode) throws Exception {
         // Create the output matrix object
         final Matrix mhsMatrix = new Matrix();
-        // Object to create the matrix (int[][]) from an ArrayList
+        // Object to create the matrix (boolean[][]) from an ArrayList
         final OutputMatrixBuilder outputMatrixBuilder = new OutputMatrixBuilder();
         // Object to build the information to write in the output file
         final StringBuilder sbHeaderMBase = new StringBuilder();
 
-        final int[][] inputIntMatrix = matrix.getIntMatrix();
+        final boolean[][] inputBoolMatrix = matrix.getBoolMatrix();
 
         try {
 
             long startTimeMBase = System.currentTimeMillis();
 
             // List of all MHS found
-            final ArrayList<int[]> mhsList = solve(inputIntMatrix, timeout, debugMode);
+            final ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, debugMode);
 
             executionTime = System.currentTimeMillis() - startTimeMBase;
 
             // Number of MHS found
-            mhsFound = mhsList.size();
+            numberMHSFound = mhsList.size();
 
             // Compute the min and max cardinality found
-            minCardinality = checkCardinality(mhsList.get(0));
-            maxCardinality = checkCardinality(mhsList.get(mhsList.size() - 1));
+            if (!mhsList.isEmpty()) {
+                minCardinality = checkCardinality(mhsList.get(0));
+                maxCardinality = checkCardinality(mhsList.get(mhsList.size() - 1));
+            }
 
-            printMBaseExecutionInformation(runtime, mhsList, executionTime);
+            printMBaseExecutionInformation(runtime, executionTime);
 
-            buildMBaseExecutionInformation(runtime, mhsList, executionTime, sbHeaderMBase);
+            buildMBaseExecutionInformation(runtime, executionTime, sbHeaderMBase);
 
             // Write the information built before in the output report
             outputFileWriter.writeOutputFile(sbHeaderMBase);
@@ -121,10 +132,10 @@ public class MinimalHittingSetSolver {
 
             try {
 
-                int[][] mhsIntMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputIntMatrix[0].length);
+                boolean[][] mhsIntMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
                 mhsMatrix.setName(matrix.getName());
-                mhsMatrix.setIntMatrix(mhsIntMatrix);
+                mhsMatrix.getBoolMatrix(mhsIntMatrix);
 
             } catch (OutOfMemoryError me) {
                 System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
@@ -143,11 +154,10 @@ public class MinimalHittingSetSolver {
 
     /**
      * @param runtime
-     * @param mhsList
      * @param executionTime
      * @param sbHeaderMBase
      */
-    private void buildMBaseExecutionInformation(Runtime runtime, ArrayList<int[]> mhsList, long executionTime, StringBuilder sbHeaderMBase) {
+    private void buildMBaseExecutionInformation(Runtime runtime, long executionTime, StringBuilder sbHeaderMBase) {
         sbHeaderMBase.append(DOUBLE_LINE).append("\n");
         sbHeaderMBase.append("\t\t\t\tMBase").append("\n");
         sbHeaderMBase.append(DOUBLE_LINE).append("\n");
@@ -155,16 +165,15 @@ public class MinimalHittingSetSolver {
         sbHeaderMBase.append("MBase time: ").append(executionTime).append(" ms").append("\n");
         sbHeaderMBase.append("Minimum cardinality: ").append(minCardinality).append("\n");
         sbHeaderMBase.append("Maximum cardinality: ").append(maxCardinality).append("\n");
-        sbHeaderMBase.append("Number of MHS found: ").append(mhsList.size()).append("\n");
+        sbHeaderMBase.append("Number of MHS found: ").append(numberMHSFound).append("\n");
     }
 
     /**
      * @param runtime
-     * @param mhsList
      * @param executionTime
      */
-    private void printMBaseExecutionInformation(Runtime runtime, ArrayList<int[]> mhsList, long executionTime) {
-        System.out.println("Number of MHS found (in " + executionTime + " ms)" + ": " + mhsList.size());
+    private void printMBaseExecutionInformation(Runtime runtime, long executionTime) {
+        System.out.println("Number of MHS found (in " + executionTime + " ms)" + ": " + numberMHSFound);
         System.out.println("Minimum cardinality: " + minCardinality);
         System.out.println("Maximum cardinality: " + maxCardinality);
         printUsedMemory(runtime, "Consumed memory (MBase): ");
@@ -176,8 +185,8 @@ public class MinimalHittingSetSolver {
      * @param e
      * @return
      */
-    private long checkCardinality(int[] e) {
-        return Arrays.stream(e).filter(i -> i == 1).count();
+    private long checkCardinality(boolean[] e) {
+        return Booleans.countTrue(e);
     }
 
     /**
@@ -186,13 +195,13 @@ public class MinimalHittingSetSolver {
      * @param outputFileWriter
      * @throws IOException
      */
-    private void printMHSFoundUpToOutOfMemory(ArrayList<int[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
+    private void printMHSFoundUpToOutOfMemory(ArrayList<boolean[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
         StringBuilder sb = new StringBuilder();
 
         for (int i = 0; i < mhsList.size(); i++) {
-            int[] mhs = mhsList.get(i);
+            boolean[] mhs = mhsList.get(i);
             for (int j = 0; j < mhs.length; j++) {
-                sb.append(mhs[j]).append(" ");
+                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
             }
             sb.append("-\n");
         }
@@ -214,13 +223,13 @@ public class MinimalHittingSetSolver {
      * @param outputFileWriter
      * @throws IOException
      */
-    private void printMHSFoundUpToTimeout(ArrayList<int[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
+    private void printMHSFoundUpToTimeout(ArrayList<boolean[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
         StringBuilder sb = new StringBuilder();
 
         for (int i = 0; i < mhsList.size(); i++) {
-            int[] mhs = mhsList.get(i);
+            boolean[] mhs = mhsList.get(i);
             for (int j = 0; j < mhs.length; j++) {
-                sb.append(mhs[j]).append(" ");
+                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
             }
             sb.append("-\n");
         }
@@ -251,27 +260,27 @@ public class MinimalHittingSetSolver {
     /**
      * MBase procedure
      *
-     * @param intMatrix The input matrix from benchmark file (e.g. ####.####.matrix)
-     * @param timeout   The maximum time limit
+     * @param boolMatrix The input matrix from benchmark file (e.g. ####.####.matrix)
+     * @param timeout    The maximum time limit
      * @return The list of MHS found
      */
-    private ArrayList<int[]> solve(int[][] intMatrix, long timeout, boolean debugMode) throws Exception {
-        final int rows = intMatrix.length; // N = number of rows
-        final int cols = intMatrix[0].length; // number of columns = X <= M
+    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, boolean debugMode) throws Exception {
+        final int rows = boolMatrix.length; // N = number of rows
+        final int cols = boolMatrix[0].length; // number of columns = X <= M
 
         // Create the list of MHS
-        final ArrayList<int[]> mhsList = new ArrayList<>();
+        final ArrayList<boolean[]> mhsList = new ArrayList<>();
         // Create the queue to store the sets lexicographical elements
-        final Queue<int[]> queue = new LinkedList<>();
+        final Queue<boolean[]> queue = new LinkedList<>();
 
         // Add empty vector [0 0 ... 0]
-        queue.add(new int[cols]);
+        queue.add(new boolean[cols]);
 
         long startTime = System.currentTimeMillis();
 
         while (!queue.isEmpty() && (System.currentTimeMillis() - startTime) <= timeout) {
             // Get the first element of the queue
-            int[] e = queue.poll();
+            boolean[] e = queue.poll();
 
             if (debugMode) {
                 System.out.println(LINE);
@@ -280,14 +289,14 @@ public class MinimalHittingSetSolver {
 
             for (int i = getSucc(getMax(e), cols); i < cols && (System.currentTimeMillis() - startTime) <= timeout; i++) {
                 try {
-                    int[] newE = Arrays.copyOf(e, e.length);
-                    newE[i] = 1;
+                    boolean[] newE = Arrays.copyOf(e, e.length);
+                    newE[i] = true;
 
                     if (debugMode)
                         System.out.println("Element: " + Arrays.toString(newE));
 
                     // Create the submatrix object
-                    SubMatrix subMatrix = getSubMatrix(newE, intMatrix);
+                    SubMatrix subMatrix = getSubMatrix(newE, boolMatrix);
 
                     if (debugMode)
                         System.out.println(subMatrix.toString());
@@ -339,7 +348,7 @@ public class MinimalHittingSetSolver {
      *
      * @param matrix
      */
-    private void printMatrix(int[][] matrix) {
+    private void printBoolMatrix(boolean[][] matrix) {
         for (int i = 0; i < matrix.length; i++) {
             for (int j = 0; j < matrix[0].length; j++) {
                 System.out.print(matrix[i][j]);
@@ -356,26 +365,26 @@ public class MinimalHittingSetSolver {
      * @return
      * @throws Exception
      */
-    private SubMatrix getSubMatrix(int[] e, int[][] matrix) throws Exception {
+    private SubMatrix getSubMatrix(boolean[] e, boolean[][] matrix) throws Exception {
         // Number of columns of the submatrix (i.e. number of 1 in e[])
         int numOfCols = getNumberOfElements(e);
 
-        int[][] intSubMatrix = new int[matrix.length][numOfCols];
+        boolean[][] boolSubMatrix = new boolean[matrix.length][numOfCols];
         // Elements (columns) that make up the submatrix
         ArrayList<Integer> elements = new ArrayList<>();
         int col = 0; // Columns counter for the submatrix (col < inputMatrix[0].length)
 
         for (int k = getFirstElement(e); k < e.length; k++) {
-            if (e[k] == 1 && col < numOfCols) {
+            if (e[k] && col < numOfCols) {
                 elements.add(k);
                 for (int i = 0; i < matrix.length; i++) { // rows
-                    intSubMatrix[i][col] = matrix[i][k];
+                    boolSubMatrix[i][col] = matrix[i][k];
                 }
                 col++;
             }
         }
 
-        return new SubMatrix(elements, intSubMatrix);
+        return new SubMatrix(elements, boolSubMatrix);
     }
 
     /**
@@ -384,10 +393,8 @@ public class MinimalHittingSetSolver {
      * @param e
      * @return
      */
-    private int getNumberOfElements(int[] e) {
-        List<Integer> eList = Arrays.stream(e).boxed().collect(Collectors.toList());
-
-        return Collections.frequency(eList, 1);
+    private int getNumberOfElements(boolean[] e) {
+        return Booleans.countTrue(e);
     }
 
     /**
@@ -460,31 +467,31 @@ public class MinimalHittingSetSolver {
      * @throws Exception
      */
     private int[] getRepresentativeVector(SubMatrix subMatrix) throws Exception {
-        int[][] intSubMatrix = subMatrix.getIntMatrix();
+        boolean[][] boolSubMatrix = subMatrix.getBoolMatrix();
         // RV has the submatrix number of rows (also of the input matrix)
-        int[] rv = new int[intSubMatrix.length];
+        int[] rv = new int[boolSubMatrix.length];
 
-        for (int j = 0; j < intSubMatrix[0].length; j++) { // j = cols
-            for (int i = 0; i < intSubMatrix.length; i++) { // i = rows
+        for (int j = 0; j < boolSubMatrix[0].length; j++) { // j = cols
+            for (int i = 0; i < boolSubMatrix.length; i++) { // i = rows
                 // Check the elements considered in the submatrix
                 if (!subMatrix.getElements().isEmpty()) {
-                    if (rv[i] == -1 && intSubMatrix[i][j] == 1) {
+                    if (rv[i] == -1 && boolSubMatrix[i][j]) {
                         rv[i] = -1; // x-value (i.e. the i-th set intersect at least 2 elements of submatrix)
                         continue;
                     }
 
-                    if (rv[i] == 0 && intSubMatrix[i][j] == 1) {
+                    if (rv[i] == 0 && boolSubMatrix[i][j]) {
                         rv[i] = subMatrix.getElements().get(j) + 1; // Store the "real" value of the column
                         continue;
                     }
 
-                    if (rv[i] != (subMatrix.getElements().get(j) + 1) && intSubMatrix[i][j] == 1) {
+                    if (rv[i] != (subMatrix.getElements().get(j) + 1) && boolSubMatrix[i][j]) {
                         rv[i] = -1; // x-value (i.e. the i-th set intersect at least 2 elements of submatrix)
-                        continue;
+//                        continue;
                     }
 
 //                    // Can be removed [?]
-//                    if (rv[i] == (subMatrix.getElements().get(j) + 1) && intSubMatrix[i][j] == 1) {
+//                    if (rv[i] == (subMatrix.getElements().get(j) + 1) && boolSubMatrix[i][j]) {
 //                        rv[i] = subMatrix.getElements().get(j) + 1; //
 //                    }
                 }
@@ -501,9 +508,9 @@ public class MinimalHittingSetSolver {
      * @param e
      * @return the position of the first lexicographical element
      */
-    private int getFirstElement(int[] e) throws Exception {
+    private int getFirstElement(boolean[] e) throws Exception {
         for (int i = 0; i < e.length; i++) {
-            if (e[i] == 1) {
+            if (e[i]) {
                 return i;
             }
         }
@@ -529,12 +536,12 @@ public class MinimalHittingSetSolver {
      * @param e
      * @return
      */
-    private int getMax(int[] e) {
+    private int getMax(boolean[] e) {
         int max = e.length;
 
         do {
             max--;
-        } while ((max > -1) && (e[max] == 0));
+        } while ((max > -1) && (!e[max]));
 
         return max;
     }

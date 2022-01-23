@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class SubMatrix extends Matrix {
     private ArrayList<Integer> elements;
 
-    public SubMatrix(ArrayList<Integer> elements, int[][] matrix) {
+    public SubMatrix(ArrayList<Integer> elements, boolean[][] matrix) {
         super(matrix);
         this.elements = elements;
     }

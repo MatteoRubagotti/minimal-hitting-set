@@ -1,23 +1,23 @@
 package unibs.it.dii.mhs.model;
 
 public class Matrix {
-    private int[][] intMatrix;
+    private boolean[][] boolMatrix;
     private String name;
 
-    public Matrix(int[][] matrix) {
-        this.intMatrix = matrix;
+    public Matrix(boolean[][] matrix) {
+        this.boolMatrix = matrix;
     }
 
     public Matrix() {
 
     }
 
-    public int[][] getIntMatrix() {
-        return intMatrix;
+    public boolean[][] getBoolMatrix() {
+        return boolMatrix;
     }
 
-    public void setIntMatrix(int[][] intMatrix) {
-        this.intMatrix = intMatrix;
+    public void getBoolMatrix(boolean[][] boolMatrix) {
+        this.boolMatrix = boolMatrix;
     }
 
     public String getName() {
