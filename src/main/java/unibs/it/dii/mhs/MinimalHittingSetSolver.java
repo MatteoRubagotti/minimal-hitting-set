@@ -107,8 +107,8 @@ public class MinimalHittingSetSolver {
 
             // Compute the min and max cardinality found
             if (!mhsList.isEmpty()) {
-                minCardinality = checkCardinality(mhsList.get(0));
-                maxCardinality = checkCardinality(mhsList.get(mhsList.size() - 1));
+                minCardinality = getCardinality(mhsList.get(0));
+                maxCardinality = getCardinality(mhsList.get(mhsList.size() - 1));
             }
 
             printMBaseExecutionInformation(runtime, executionTime);
@@ -148,28 +148,24 @@ public class MinimalHittingSetSolver {
                 } catch (OutOfMemoryError me) {
                     System.err.println("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY");
                     outputFileWriter.writeOutputFile(new StringBuilder("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY\n"));
-                    outOfMemory = true;
-//                System.exit(-1);
+//                    outOfMemory = true;
                 }
             }
 
             try {
 
-                boolean[][] mhsIntMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
+                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
                 mhsMatrix.setName(matrix.getName());
-                mhsMatrix.getBoolMatrix(mhsIntMatrix);
+                mhsMatrix.setBoolMatrix(mhsBoolMatrix);
 
             } catch (OutOfMemoryError me) {
                 System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
-                outOfMemory = true;
-//            System.exit(-1);
             }
 
         } catch (OutOfMemoryError me) {
             System.err.println("OUT OF MEMORY");
-            outOfMemory = true;
         }
 
         return mhsMatrix;
@@ -221,7 +217,7 @@ public class MinimalHittingSetSolver {
      * @param e
      * @return
      */
-    private long checkCardinality(boolean[] e) {
+    private long getCardinality(boolean[] e) {
         return Booleans.countTrue(e);
     }
 
@@ -245,7 +241,6 @@ public class MinimalHittingSetSolver {
         try {
             outputFileWriter.writeOutputFile(sb);
         } catch (OutOfMemoryError | IOException me) {
-            outOfMemory = true;
             outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
             System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
         }
@@ -273,7 +268,6 @@ public class MinimalHittingSetSolver {
         try {
             outputFileWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
         } catch (OutOfMemoryError me) {
-            outOfMemory = true;
             outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
             System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
 //            System.exit(-1);
@@ -289,7 +283,6 @@ public class MinimalHittingSetSolver {
      */
     private void printUsedMemory(Runtime runtime, String s) {
         long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
-//            System.out.println(s + memoryAfter + "bytes");
         System.out.println(s + bytesToMegaBytes(memoryAfter) + "MB");
     }
 
@@ -359,8 +352,8 @@ public class MinimalHittingSetSolver {
                         System.out.println(DOUBLE_LINE);
                 } catch (OutOfMemoryError me) {
                     System.err.println("Execution interrupted > Cause: OUT OF MEMORY");
-                    outOfMemory = true;
                     consumedMemory = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+                    outOfMemory = true;
                     queue.clear(); // More free memory space
 
                     // Return the MHS computed until memory saturation
@@ -499,7 +492,7 @@ public class MinimalHittingSetSolver {
         if (!rvFullProjected) // KO
             return 0;
 
-        // This line is reached only if there are some logical problems in the algorithm
+        // This line is reached only if there are some logical problems in the algorithm!
         throw new Exception(MSG_EXCEPTION_CHECK_MODULE);
     }
 
@@ -534,7 +527,7 @@ public class MinimalHittingSetSolver {
 //                        continue;
                     }
 
-//                    // Can be removed [?]
+//                    // Can be removed
 //                    if (rv[i] == (subMatrix.getElements().get(j) + 1) && boolSubMatrix[i][j]) {
 //                        rv[i] = subMatrix.getElements().get(j) + 1; //
 //                    }

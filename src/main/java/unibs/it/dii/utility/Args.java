@@ -5,6 +5,8 @@ import com.beust.jcommander.converters.PathConverter;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 public class Args {
     @Parameter(
@@ -93,7 +95,7 @@ public class Args {
             validateWith = OutputDirectoryValidator.class
     )
 
-    private Path outputPath = Paths.get(System.getProperty("user.home") + "/output");
+    private Path outputPath = Paths.get(System.getProperty("user.home") + "/output" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
 
     public Path getOutputPath() {
         return outputPath;

@@ -1,6 +1,9 @@
 package unibs.it.dii.utility;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
 public class OutputFileWriter {
@@ -8,6 +11,11 @@ public class OutputFileWriter {
     public static final String OUTPUT_WITH_PRE_ELABORATION = "-with-pre-elaboration";
 
     private File outputFile;
+
+    public OutputFileWriter(Path outputPath) throws IOException {
+        if (!outputPath.toFile().exists())
+            Files.createDirectories(outputPath);
+    }
 
     public File getOutputFile() {
         return outputFile;
@@ -17,8 +25,8 @@ public class OutputFileWriter {
         this.outputFile = outputFile;
     }
 
-    public File createOutputFile(boolean preProcessing, String name) throws IOException {
-        final StringBuilder fullName = new StringBuilder(name);
+    public File createOutputFile(boolean preProcessing, String fileName) throws IOException {
+        final StringBuilder fullName = new StringBuilder(fileName);
 
         if (preProcessing)
             fullName.append(OUTPUT_WITH_PRE_ELABORATION);

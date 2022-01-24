@@ -17,7 +17,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class MinimalHittingSetFacade {
-    public static final int STD_OUT_MHS_LIMIT = 10000;
     final static private String DOUBLE_LINE = "=========================================================================";
     final static private String LINE = "-------------------------------------------------------------------------";
     final static private String HEADER = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
@@ -25,18 +24,16 @@ public class MinimalHittingSetFacade {
     final static private String MSG_READING_MATRIX_FILE = "\t\t\t\tReading .matrix file...";
     final static private String MSG_PRE_PROCESSING_RUNNING = "\t\t\t\tRun Pre-Processing...";
     final static private String MSG_MBASE_EXECUTION = "\t\t\t\tMBase Execution...";
+    final static private  String MSG_WRITING_FILE = "\t\t\t\tWriting output file...";
+    final static private String MSG_WRITING_CSV = "\t\t\t\tWriting CSV...";
 
     final static private String PATH_TO_CSV = "./csv" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     final static private String CSV_FILE_NAME = "mhs-report" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) + ".csv";
 
     final static private String CSV_HEADER = "Date-Time,Matrix,Execution time Pre-Elaboration (ms),Pre-Elaboration RAM (MB),Rows removed,Cols removed,Execution time MBase (ms),MBase RAM (MB),Out of Time,Out of Memory,Rows,Columns,Cardinality Min,Cardinality Max,#MHS";
 
-//    final static private String DATE_TIME = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"));
-
     private static final long MEGABYTE = 1024L * 1024L;
-    private static final long MILLISECONDS = 1000;
-    public static final String MSG_WRITING_FILE = "\t\t\t\tWriting output file...";
-    private static final String MSG_WRITING_CSV = "\t\t\t\tWriting CSV...";
+    final static public int STD_OUT_MHS_LIMIT = 10000;
 
     /**
      *
@@ -50,10 +47,10 @@ public class MinimalHittingSetFacade {
     final private boolean automaticMode;
     private Queue<String> benchmarkFileQueue = new LinkedList<>();
     final OutputCSVWriter csvWriter = new OutputCSVWriter();
-    final OutputFileWriter outputFileWriter = new OutputFileWriter();
     final FileMatrixReader reader = new FileMatrixReader();
+    final OutputFileWriter outputFileWriter;
 
-    public MinimalHittingSetFacade(boolean preProcessing, boolean verbosity, Path inputPath, Path outputPath, Path inputDirectoryPath, long timeout, boolean automaticMode) {
+    public MinimalHittingSetFacade(boolean preProcessing, boolean verbosity, Path inputPath, Path outputPath, Path inputDirectoryPath, long timeout, boolean automaticMode) throws IOException {
         this.preProcessing = preProcessing;
         this.verbose = verbosity;
         this.inputPath = inputPath;
@@ -61,8 +58,13 @@ public class MinimalHittingSetFacade {
         this.inputDirectoryPath = inputDirectoryPath;
         this.timeout = timeout;
         this.automaticMode = automaticMode;
+        this.outputFileWriter = new OutputFileWriter(outputPath);
     }
 
+    /**
+     *
+     * @throws Exception
+     */
     public void find() throws Exception {
         // Experimental purpose
         final boolean debugMode = false;
@@ -88,9 +90,11 @@ public class MinimalHittingSetFacade {
 
         printStartingMessage(benchmarkFileQueue);
 
+        int numberFileToProcess = benchmarkFileQueue.size();
+
         for (int i = 0; !benchmarkFileQueue.isEmpty(); i++) {
             if (i > 0) {
-                System.out.println("Remaining benchmark files to process: " + (benchmarkFileQueue.size() - i));
+                System.out.println("Remaining benchmark files to process: " + (numberFileToProcess - i));
                 TimeUnit.SECONDS.sleep(1);
             }
 
@@ -130,7 +134,6 @@ public class MinimalHittingSetFacade {
             StringBuilder headerOutputStringBuilder = buildOutputHeaderString(inputMatrix.getName(), initialRows, initialCols, timeout);
 
             if (preProcessing) {
-            } else {
                 printStatusInformation(MSG_PRE_PROCESSING_RUNNING);
 
                 // Create the object to compute the pre-processing operation
@@ -231,7 +234,7 @@ public class MinimalHittingSetFacade {
     }
 
     private StringBuilder buildOutputMatrixHeader() {
-        return new StringBuilder(LINE + "\n" + "Output Matrix:");
+        return new StringBuilder(LINE + "\n" + "Output Matrix:\n");
     }
 
     private void printStatusInformation(String status) {
@@ -325,7 +328,9 @@ public class MinimalHittingSetFacade {
      * @param s
      */
     private void printTotalMemoryAvailable(Runtime runtime, String s) {
+        System.out.println(LINE);
         System.out.println(s + bytesToMegaBytes(runtime.maxMemory()) + " MB");
+        System.out.println(LINE);
     }
 
     /**
