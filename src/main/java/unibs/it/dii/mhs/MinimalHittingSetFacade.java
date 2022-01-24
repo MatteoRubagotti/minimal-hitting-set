@@ -27,7 +27,7 @@ public class MinimalHittingSetFacade {
     final static private  String MSG_WRITING_FILE = "\t\t\t\tWriting output file...";
     final static private String MSG_WRITING_CSV = "\t\t\t\tWriting CSV...";
 
-    final static private String PATH_TO_CSV = "./csv" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+    final static private String PATH_TO_CSV = "./csv/csv" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     final static private String CSV_FILE_NAME = "mhs-report" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) + ".csv";
 
     final static private String CSV_HEADER = "Date-Time,Matrix,Execution time Pre-Elaboration (ms),Pre-Elaboration RAM (MB),Rows removed,Cols removed,Execution time MBase (ms),MBase RAM (MB),Out of Time,Out of Memory,Rows,Columns,Cardinality Min,Cardinality Max,#MHS";
@@ -342,7 +342,7 @@ public class MinimalHittingSetFacade {
      */
     private void checkCSVPath(Path csvPath, OutputCSVWriter writer) throws IOException {
         if (!Files.exists(Paths.get(PATH_TO_CSV))) // ./csv directory does not exist
-            Files.createDirectory(Paths.get(PATH_TO_CSV));
+            Files.createDirectories(Paths.get(PATH_TO_CSV));
 
         if (!Files.exists(csvPath)) { // The file .csv does not exist
             Files.createFile(csvPath);

@@ -108,3 +108,6 @@ gen
 
 # MacOS
 .DS_Store
+
+# CSV
+csv
