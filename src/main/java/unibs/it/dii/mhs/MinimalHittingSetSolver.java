@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.*;
 
 import static java.lang.Integer.min;
-import static unibs.it.dii.mhs.MinimalHittingSet.bytesToMegaBytes;
+import static unibs.it.dii.mhs.MinimalHittingSetFacade.bytesToMegaBytes;
 
 public class MinimalHittingSetSolver {
 
@@ -20,13 +20,25 @@ public class MinimalHittingSetSolver {
     final static private String MSG_EXCEPTION_GET_FIRST_ELEMENT = "ATTENTION! Something went wrong with getFirstElement (i.e. get the first lexicographical element available)";
     final static private String MSG_EXCEPTION_CHECK_MODULE = "ATTENTION! Something went wrong with checkModule";
 
-    private boolean outOfTime = false;
-    private boolean outOfMemory = false;
-    private long minCardinality = 0;
-    private long maxCardinality = 0;
-    private long executionTime = 0;
-    private int numberMHSFound = 0;
-    private long consumedMemory = 0;
+    private boolean outOfTime;
+    private boolean outOfMemory;
+    private long minCardinality;
+    private long maxCardinality;
+    private long executionTime;
+    private int numberMHSFound;
+    private long consumedMemory;
+    private boolean debug;
+
+    public MinimalHittingSetSolver(boolean debug) {
+        this.outOfTime = false;
+        this.outOfMemory = false;
+        this.minCardinality = 0;
+        this.maxCardinality = 0;
+        this.executionTime = 0;
+        this.numberMHSFound = 0;
+        this.consumedMemory = 0;
+        this.debug = debug;
+    }
 
     public long getConsumedMemory() {
         return consumedMemory;
@@ -34,10 +46,6 @@ public class MinimalHittingSetSolver {
 
     public long getExecutionTime() {
         return executionTime;
-    }
-
-    public void setExecutionTime(long getExecutionTime) {
-        this.executionTime = getExecutionTime;
     }
 
     public int getNumberMHSFound() {
@@ -61,17 +69,18 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * Method to manage the solution of MHS problem.
+     * Method to compute the solution of MHS problem.
      *
      * @param matrix
      * @param timeout
      * @param runtime
      * @param outputFileWriter
-     * @param debugMode
-     * @return The output matrix of the MHS found
+     * @param colsRemoved
+     * @param initialCols
+     * @return The output matrix of the all MHS found
      * @throws Exception
      */
-    public Matrix computeMinimalHittingSets(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, boolean debugMode, ArrayList<Integer> colsRemoved, int initialCols) throws Exception {
+    public Matrix execute(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws Exception {
         // Reset the variables for each method call
         resetSolverVariables();
 
@@ -89,7 +98,7 @@ public class MinimalHittingSetSolver {
             long startTimeMBase = System.currentTimeMillis();
 
             // List of all MHS found
-            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, debugMode, runtime);
+            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, debug, runtime);
 
             executionTime = System.currentTimeMillis() - startTimeMBase;
 
@@ -115,7 +124,7 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF MEMORY\n"));
 
-                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputBoolMatrix[0].length);
+                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
                 try {
                     printMHSFoundUpToInterruption(mhsBoolMatrix, timeout, outputFileWriter, colsRemoved, initialCols);
@@ -132,7 +141,7 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF TIME");
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF TIME\n"));
 
-                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputBoolMatrix[0].length);
+                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
                 try {
                     printMHSFoundUpToInterruption(mhsBoolMatrix, timeout, outputFileWriter, colsRemoved, initialCols);
@@ -146,7 +155,7 @@ public class MinimalHittingSetSolver {
 
             try {
 
-                boolean[][] mhsIntMatrix = outputMatrixBuilder.getMHSIntOutputMatrix(mhsList, inputBoolMatrix[0].length);
+                boolean[][] mhsIntMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
                 mhsMatrix.setName(matrix.getName());
                 mhsMatrix.getBoolMatrix(mhsIntMatrix);
@@ -292,7 +301,7 @@ public class MinimalHittingSetSolver {
      * @param runtime
      * @return The list of MHS found
      */
-    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, boolean debugMode, Runtime runtime) throws Exception {
+    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, boolean debug, Runtime runtime) throws Exception {
         final int rows = boolMatrix.length; // N = number of rows
         final int cols = boolMatrix[0].length; // number of columns = X <= M
 
@@ -310,7 +319,7 @@ public class MinimalHittingSetSolver {
             // Get the first element of the queue
             boolean[] e = queue.poll();
 
-            if (debugMode) {
+            if (debug) {
                 System.out.println(LINE);
                 System.out.println("Successor: " + getSucc(getMax(e), cols));
             }
@@ -320,22 +329,22 @@ public class MinimalHittingSetSolver {
                     boolean[] newE = Arrays.copyOf(e, e.length);
                     newE[i] = true;
 
-                    if (debugMode)
+                    if (debug)
                         System.out.println("Element: " + Arrays.toString(newE));
 
                     // Create the submatrix object
                     SubMatrix subMatrix = getSubMatrix(newE, boolMatrix);
 
-                    if (debugMode)
+                    if (debug)
                         System.out.println(subMatrix.toString());
 
                     // Compute the representative vector
                     final int[] rv = getRepresentativeVector(subMatrix);
 
                     // Scan the representative vector (subset of M)
-                    int result = checkModule(rv, subMatrix.getElements(), debugMode);
+                    int result = checkModule(rv, subMatrix.getElements(), debug);
 
-                    if (debugMode) {
+                    if (debug) {
                         System.out.println("RV" + i + ": " + Arrays.toString(rv));
                         System.out.println("Result: " + (result == 2 ? "MHS" : (result == 1 ? "OK" : "KO")));
                     }
@@ -346,7 +355,7 @@ public class MinimalHittingSetSolver {
                     if (result == 2) // MHS
                         mhsList.add(newE); // Add the element to MHS list
 
-                    if (debugMode)
+                    if (debug)
                         System.out.println(DOUBLE_LINE);
                 } catch (OutOfMemoryError me) {
                     System.err.println("Execution interrupted > Cause: OUT OF MEMORY");
@@ -439,7 +448,7 @@ public class MinimalHittingSetSolver {
      * @param elements The lexicographical elements considered
      * @return MHS = 2, OK = 1, KO = 0
      */
-    private int checkModule(int[] rv, ArrayList<Integer> elements, boolean debugMode) throws Exception {
+    private int checkModule(int[] rv, ArrayList<Integer> elements, boolean debug) throws Exception {
         // RV does not have 0 inside
         boolean empty = false;
 
@@ -459,7 +468,7 @@ public class MinimalHittingSetSolver {
             }
         }
 
-        if (debugMode)
+        if (debug)
             System.out.println("elementsFound: " + elementsFound.toString());
 
         // RV is completely projected on the lexicographical element considered (i.e. P(RV) = E)
@@ -475,7 +484,7 @@ public class MinimalHittingSetSolver {
             break;
         }
 
-        if (debugMode)
+        if (debug)
             System.out.println("empty: " + empty + "\nprojection: " + rvFullProjected);
 
         // RV does not contain 0 and P(RV) = E

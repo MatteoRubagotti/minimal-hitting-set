@@ -23,7 +23,7 @@ where ```username``` is your GitHub username.
 ### Import Project (IntelliJ IDEA + Maven)
 1. Open IntelliJ IDEA and click on ```File > New > Project from Existing Source...```
 2. Select ```minimal-hitting-set``` directory and click on ```Open``` button
-3. Install all dependencies and create the executable **_.jar_** by using the _Maven tool window_: click on ```Lifecycle > install``` ([Troubleshooting common Maven issues](https://www.jetbrains.com/help/idea/troubleshooting-common-maven-issues.html))
+3. Install all dependencies and create the executable **_.jar_** by using the _Maven tool window_: click on ```Run Maven Build``` ([Troubleshooting common Maven issues](https://www.jetbrains.com/help/idea/troubleshooting-common-maven-issues.html))
 
 ### Execution
 1. Open a ```Terminal``` window
@@ -32,7 +32,7 @@ where ```username``` is your GitHub username.
 ### Syntax
 ```console
 java -jar minimal-hitting-set-maven-project-1.0.jar 
-Options:
+  Options:
     -d, -dir, --directory
       Absolute path of the directory that contains benchmark files
       Default: <empty string>
@@ -43,7 +43,7 @@ Options:
       Default: <empty string>
     -out, --output-path
       Absolute path of the output file (.out) with report information
-      Default: absolute/path/to/home/output
+      Default: /Users/matteorubagotti/output
     -pe, -pre, --pre-elaboration
       Compute the Pre-Elaboration before execute MBase procedure
       Default: false

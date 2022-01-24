@@ -42,7 +42,7 @@
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>libs/</classpathPrefix>
                             <mainClass>
-                                unibs.it.dii.mhs.MinimalHittingSet
+                                unibs.it.dii.mhs.MinimalHittingSetMain
                             </mainClass>
                         </manifest>
                     </archive>

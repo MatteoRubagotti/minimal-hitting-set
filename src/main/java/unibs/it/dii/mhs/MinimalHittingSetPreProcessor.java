@@ -1,17 +1,24 @@
 package unibs.it.dii.mhs;
 
 import com.google.common.primitives.Booleans;
+import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-public class PreProcessor {
+public class MinimalHittingSetPreProcessor {
 
     private final ArrayList<Integer> rowsToRemove;
     private final ArrayList<Integer> colsToRemove;
     private final boolean debug;
+
+    public MinimalHittingSetPreProcessor(boolean debug) {
+        this.rowsToRemove = new ArrayList<>();
+        this.colsToRemove = new ArrayList<>();
+        this.debug = debug;
+    }
 
     public ArrayList<Integer> getRowsToRemove() {
         return rowsToRemove;
@@ -21,13 +28,7 @@ public class PreProcessor {
         return colsToRemove;
     }
 
-    public PreProcessor(boolean debug) {
-        rowsToRemove = new ArrayList<>();
-        colsToRemove = new ArrayList<>();
-        this.debug = debug;
-    }
-
-    public boolean[][] computePreProcessing(boolean[][] matrix) {
+    public boolean[][] execute(boolean[][] matrix) {
         reset();
         boolean[][] newMatrix = removeRows(matrix);
         return removeCols(newMatrix);
@@ -149,16 +150,14 @@ public class PreProcessor {
      * @param boolMatrix
      */
     private void printBoolMatrix(boolean[][] boolMatrix) {
-        if (!debug) {
-            return;
-        }
-
-        System.out.println("Size: " + boolMatrix.length + "x" + boolMatrix[0].length);
-        for (boolean[] col : boolMatrix) {
-            for (int j = 0; j < boolMatrix[0].length; j++) {
-                System.out.print(col[j] ? 1 + " " : 0 + " "); // Print each row of the matrix
+        if (debug) {
+            System.out.println("Size: " + boolMatrix.length + "x" + boolMatrix[0].length);
+            for (boolean[] col : boolMatrix) {
+                for (int j = 0; j < boolMatrix[0].length; j++) {
+                    System.out.print(col[j] ? 1 + " " : 0 + " "); // Print each row of the matrix
+                }
+                System.out.println("-"); // Print the end of a row
             }
-            System.out.println("-"); // Print the end of a row
         }
     }
 
@@ -172,7 +171,9 @@ public class PreProcessor {
         boolean[][] transposeMatrix = transpose(matrix);
 
         if (debug) {
-            System.out.println("Transpose Matrix:");
+            System.out.println("Matrix:");
+            printBoolMatrix(matrix);
+            System.out.println("Matrix transpose:");
             printBoolMatrix(transposeMatrix);
         }
 
@@ -237,7 +238,7 @@ public class PreProcessor {
         for (boolean b : col) if (b) count++;
 
         if (debug)
-            System.out.println("Column" + numCol + ": " + Booleans.asList(col).toString() + "\nisEmpty: " + (count == 0));
+            System.out.println("Column" + numCol + ": " + Booleans.asList(col).toString() + "\nEmpty: " + (count == 0));
 
         return (count == 0);
     }

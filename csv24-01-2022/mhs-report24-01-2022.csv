@@ -1,0 +1,2 @@
+"Date-Time","Matrix","Execution time Pre-Elaboration (ms)","Pre-Elaboration RAM (MB)","Rows removed","Cols removed","Execution time MBase (ms)","MBase RAM (MB)","Out of Time","Out of Memory","Rows","Columns","Cardinality Min","Cardinality Max","#MHS"
+"24-01-2022-09:57:49","74L85.000","0","0","0","25","2","3","false","false","2","33","1","2","7"

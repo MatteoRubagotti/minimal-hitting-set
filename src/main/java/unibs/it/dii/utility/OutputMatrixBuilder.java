@@ -4,7 +4,13 @@ import java.util.ArrayList;
 
 public class OutputMatrixBuilder {
 
-    public boolean[][] getMHSIntOutputMatrix(ArrayList<boolean[]> mhsList, int cols) {
+    /**
+     * Method to create the output matrix containing the all MHS found.
+     * @param mhsList
+     * @param cols
+     * @return
+     */
+    public boolean[][] getMHSBoolOutputMatrix(ArrayList<boolean[]> mhsList, int cols) {
         boolean[][] outputMatrix = new boolean[mhsList.size()][cols]; // K x X, where K is the number of MHS found and X <= M
         int row = 0;
 
