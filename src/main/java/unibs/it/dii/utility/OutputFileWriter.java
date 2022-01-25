@@ -58,7 +58,7 @@ public class OutputFileWriter {
         for (int i = 0; i < matrix.length; i++) {
             sb.setLength(0); // Reset the StringBuilder
             for (int j = 0, count = 0; j < initialCols; j++) {
-                if (colsRemoved.contains(count)) {
+                if (colsRemoved.contains(j)) {
                     sb.append("0 ");
                     continue;
                 }

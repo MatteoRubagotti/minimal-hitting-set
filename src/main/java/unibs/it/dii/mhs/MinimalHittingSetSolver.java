@@ -161,6 +161,7 @@ public class MinimalHittingSetSolver {
             try {
 
                 if (!outOfTime && !outOfMemory)
+                    System.out.println("OK");
                     mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
             } catch (OutOfMemoryError me) {
