@@ -205,8 +205,8 @@ public class MinimalHittingSetFacade {
             outputFileWriter.writeOutputFile(buildOutputMatrixHeader());
 
             if (errorWithOutputMatrix(outputMatrix)) {
-                System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
-                outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
+                System.err.println("Impossible to get output matrix (e.g. empty)");
+                outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix (e.g. empty)\n"));
             } else {
                 try {
                     outputFileWriter.writeOutputMatrix(outputMatrix.getBoolMatrix(), colsRemoved, initialCols);
@@ -233,7 +233,7 @@ public class MinimalHittingSetFacade {
             System.gc();
 
             // Print the final message on standard output
-            System.out.println("For more details: " + outputFile.getAbsolutePath());
+            System.out.println("For more details: " + outputFile.toString());
         }
 
     }

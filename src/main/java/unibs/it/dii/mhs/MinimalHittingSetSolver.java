@@ -6,7 +6,6 @@ import unibs.it.dii.mhs.model.SubMatrix;
 import unibs.it.dii.utility.OutputFileWriter;
 import unibs.it.dii.utility.OutputMatrixBuilder;
 
-import java.io.IOException;
 import java.util.*;
 
 import static java.lang.Integer.min;
@@ -100,7 +99,7 @@ public class MinimalHittingSetSolver {
             long startTimeMBase = System.currentTimeMillis();
 
             // List of all MHS found
-            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, debug, runtime);
+            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, runtime);
 
             executionTime = System.currentTimeMillis() - startTimeMBase;
 
@@ -122,46 +121,19 @@ public class MinimalHittingSetSolver {
 
             // MBase execution OUT OF MEMORY
             if (outOfMemory) {
-                // Print and write the cause of interruption
-                System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
+                // Write the cause of interruption
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF MEMORY\n"));
-
-                if (!mhsList.isEmpty()) {
-                    mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
-
-                    try {
-                        writeMHSFoundUpToInterruption(mhsBoolMatrix, outputFileWriter, colsRemoved, initialCols);
-                    } catch (OutOfMemoryError me) {
-                        outOfMemory = true;
-                        System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY\n");
-                        outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
-                    }
-                }
             }
 
             // MBase execution OUT OF TIME
             if (outOfTime) {
-                // Print and write the cause of interruption
-                System.out.println("Execution interrupted > Cause: OUT OF TIME");
+                // Write the cause of interruption
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF TIME\n"));
-
-                if (!mhsList.isEmpty()) {
-                    mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
-
-                    try {
-                        writeMHSFoundUpToInterruption(mhsBoolMatrix, outputFileWriter, colsRemoved, initialCols);
-                    } catch (OutOfMemoryError me) {
-                        System.err.println("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY");
-                        outputFileWriter.writeOutputFile(new StringBuilder("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY\n"));
-//                        outOfMemory = true;
-                    }
-                }
             }
 
             try {
 
-                if (!outOfTime && !outOfMemory)
-                    System.out.println("OK");
+                if (!mhsList.isEmpty())
                     mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
             } catch (OutOfMemoryError me) {
@@ -173,8 +145,8 @@ public class MinimalHittingSetSolver {
             mhsMatrix.setBoolMatrix(mhsBoolMatrix);
 
         } catch (OutOfMemoryError me) {
-            System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
-            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
+            System.err.println("Problems with the execution of MBase > Cause: OUT OF MEMORY");
+            outputFileWriter.writeOutputFile(new StringBuilder("Problems with the execution of MBase > Cause: OUT OF MEMORY\n"));
         }
 
         return mhsMatrix;
@@ -230,50 +202,50 @@ public class MinimalHittingSetSolver {
         return Booleans.countTrue(e);
     }
 
-    /**
-     * @param mhsList
-     * @param timeout
-     * @param outputFileWriter
-     * @throws IOException
-     */
-    private void printMHSFoundUpToOutOfMemory(ArrayList<boolean[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
-        StringBuilder sb = new StringBuilder();
+//    /**
+//     * @param mhsList
+//     * @param timeout
+//     * @param outputFileWriter
+//     * @throws IOException
+//     */
+//    private void printMHSFoundUpToOutOfMemory(ArrayList<boolean[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
+//        StringBuilder sb = new StringBuilder();
+//
+//        for (int i = 0; i < mhsList.size(); i++) {
+//            boolean[] mhs = mhsList.get(i);
+//            for (int j = 0; j < mhs.length; j++) {
+//                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
+//            }
+//            sb.append("-\n");
+//        }
+//
+//        try {
+//            outputFileWriter.writeOutputFile(sb);
+//        } catch (OutOfMemoryError | IOException me) {
+//            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
+//            System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
+//        }
+//
+////        System.exit(200);
+//    }
 
-        for (int i = 0; i < mhsList.size(); i++) {
-            boolean[] mhs = mhsList.get(i);
-            for (int j = 0; j < mhs.length; j++) {
-                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
-            }
-            sb.append("-\n");
-        }
-
-        try {
-            outputFileWriter.writeOutputFile(sb);
-        } catch (OutOfMemoryError | IOException me) {
-            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
-            System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
-        }
-
-//        System.exit(200);
-    }
-
-    /**
-     * @param matrix
-     * @param outputFileWriter
-     * @param colsRemoved
-     * @param initialCols
-     * @throws IOException
-     */
-    private void writeMHSFoundUpToInterruption(boolean[][] matrix, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
-        try {
-            outputFileWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
-        } catch (OutOfMemoryError me) {
-            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
-            System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
-//            System.exit(-1);
-        }
-//        System.out.println("For more details: " + outputFileWriter.getOutputFile().getAbsolutePath());
-    }
+//    /**
+//     * @param matrix
+//     * @param outputFileWriter
+//     * @param colsRemoved
+//     * @param initialCols
+//     * @throws IOException
+//     */
+//    private void writeMHSFoundUpToInterruption(boolean[][] matrix, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
+//        try {
+//            outputFileWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
+//        } catch (OutOfMemoryError me) {
+//            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
+//            System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
+////            System.exit(-1);
+//        }
+////        System.out.println("For more details: " + outputFileWriter.getOutputFile().getAbsolutePath());
+//    }
 
     /**
      * @param runtime
@@ -292,7 +264,7 @@ public class MinimalHittingSetSolver {
      * @param runtime
      * @return The list of MHS found
      */
-    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, boolean debug, Runtime runtime) throws Exception {
+    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, Runtime runtime) throws Exception {
         final int rows = boolMatrix.length; // N = number of rows
         final int cols = boolMatrix[0].length; // number of columns = X <= M
 
@@ -364,6 +336,7 @@ public class MinimalHittingSetSolver {
         long endTime = System.currentTimeMillis();
 
         if ((endTime - startTime) > timeout) {
+            System.err.println("Execution interrupted > Cause: OUT OF TIME");
             outOfTime = true;
             consumedMemory = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
             queue.clear(); // More free memory space
