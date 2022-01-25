@@ -24,11 +24,11 @@ public class MinimalHittingSetFacade {
     final static private String MSG_READING_MATRIX_FILE = "\t\t\t\tReading .matrix file...";
     final static private String MSG_PRE_PROCESSING_RUNNING = "\t\t\t\tRun Pre-Processing...";
     final static private String MSG_MBASE_EXECUTION = "\t\t\t\tMBase Execution...";
-    final static private  String MSG_WRITING_FILE = "\t\t\t\tWriting output file...";
+    final static private String MSG_WRITING_FILE = "\t\t\t\tWriting output file...";
     final static private String MSG_WRITING_CSV = "\t\t\t\tWriting CSV...";
 
-    final static private String PATH_TO_CSV = "./csv/csv" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-    final static private String CSV_FILE_NAME = "mhs-report" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) + ".csv";
+    final static private String PATH_TO_CSV = "./csv/csv-" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+    final static private String CSV_FILE_NAME = "mhs-report-" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) + ".csv";
 
     final static private String CSV_HEADER = "Date-Time,Matrix,Execution time Pre-Elaboration (ms),Pre-Elaboration RAM (MB),Rows removed,Cols removed,Execution time MBase (ms),MBase RAM (MB),Out of Time,Out of Memory,Rows,Columns,Cardinality Min,Cardinality Max,#MHS";
 
@@ -62,7 +62,6 @@ public class MinimalHittingSetFacade {
     }
 
     /**
-     *
      * @throws Exception
      */
     public void find() throws Exception {
@@ -111,7 +110,7 @@ public class MinimalHittingSetFacade {
             // Create the matrix object
             final Matrix inputMatrix = reader.readMatrixFromFile(inputFile);
 
-            printBoolMatrix(inputMatrix.getBoolMatrix());
+            printBoolMatrix(inputMatrix.getBoolMatrix(), "Input Matrix:");
 
             // Get the size of initial input matrix
             int initialRows = inputMatrix.getBoolMatrix().length;
@@ -124,7 +123,7 @@ public class MinimalHittingSetFacade {
 
             // Set the default value for the pre-processing time/memory
             long preProcessingTime = 0;
-            long memory = -1;
+            long memoryConsumedPP = -1;
             ArrayList<Integer> colsRemoved = new ArrayList<>();
             ArrayList<Integer> rowsRemoved = new ArrayList<>();
 
@@ -147,7 +146,7 @@ public class MinimalHittingSetFacade {
                 boolean[][] newInputBoolMatrix = preProcess.execute(inputMatrix.getBoolMatrix());
                 long endTimePP = System.currentTimeMillis();
 
-                printUsedMemory("Consumed memory (Pre-Processing): ", runtime);
+                memoryConsumedPP = printUsedMemory("Consumed memory (Pre-Processing): ", runtime);
 
                 // Compute the time to execute the pre-processing operation
                 preProcessingTime = endTimePP - startTimePP;
@@ -155,13 +154,13 @@ public class MinimalHittingSetFacade {
                 rowsRemoved = preProcess.getRowsToRemove();
                 colsRemoved = preProcess.getColsToRemove();
 
-                buildPreProcessingInformation(rowsRemoved, colsRemoved, newInputBoolMatrix, preProcessingTime, headerOutputStringBuilder, memory);
+                buildPreProcessingInformation(rowsRemoved, colsRemoved, newInputBoolMatrix, preProcessingTime, headerOutputStringBuilder, memoryConsumedPP);
 
                 // Set the new input matrix after pre-processing
                 inputMatrix.setBoolMatrix(newInputBoolMatrix);
             }
 
-            addPreProcessingInformationToStringJoiner(stringJoiner, preProcessingTime, memory, colsRemoved.size(), rowsRemoved.size());
+            addPreProcessingInformationToStringJoiner(stringJoiner, preProcessingTime, memoryConsumedPP, colsRemoved.size(), rowsRemoved.size());
 
             printStatusInformation(MSG_MBASE_EXECUTION);
 
@@ -205,16 +204,21 @@ public class MinimalHittingSetFacade {
 
             outputFileWriter.writeOutputFile(buildOutputMatrixHeader());
 
-            try {
-                outputFileWriter.writeOutputMatrix(outputMatrix.getBoolMatrix(), colsRemoved, initialCols);
-            } catch (OutOfMemoryError me) {
-                System.err.println("String building output matrix failed > Cause: OUT OF MEMORY");
-                outputFileWriter.writeOutputFile(new StringBuilder("String building output matrix failed > Cause: OUT OF MEMORY\n"));
+            if (errorWithOutputMatrix(outputMatrix)) {
+                System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
+                outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
+            } else {
+                try {
+                    outputFileWriter.writeOutputMatrix(outputMatrix.getBoolMatrix(), colsRemoved, initialCols);
+                } catch (OutOfMemoryError me) {
+                    System.err.println("Build string of the output matrix failed > Cause: OUT OF MEMORY");
+                    outputFileWriter.writeOutputFile(new StringBuilder("Build string of the output matrix failed > Cause: OUT OF MEMORY\n"));
+                }
             }
 
-            if (verbose) {
+            if (verbose && !errorWithOutputMatrix(outputMatrix)) {
                 try {
-                    printOutputInformation(outputMatrix.getBoolMatrix(), initialCols, rowsRemoved, colsRemoved, solver.getMinCardinality(), solver.getMaxCardinality(), debugMode);
+                    printOutputInformation(outputMatrix.getBoolMatrix(), initialCols, colsRemoved);
                 } catch (OutOfMemoryError me) {
                     System.err.println("Impossible to write output matrix on file .out > Cause: OUT OF MEMORY");
                     outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write output matrix on file .out > Cause: OUT OF MEMORY\n"));
@@ -222,6 +226,7 @@ public class MinimalHittingSetFacade {
             }
 
             printStatusInformation(MSG_WRITING_CSV);
+
             writeCSVInformationReport(csvPath.toFile().toString(), stringJoiner);
 
             // Call the garbage collector
@@ -231,6 +236,10 @@ public class MinimalHittingSetFacade {
             System.out.println("For more details: " + outputFile.getAbsolutePath());
         }
 
+    }
+
+    private boolean errorWithOutputMatrix(Matrix outputMatrix) {
+        return outputMatrix.getBoolMatrix()[0].length == 1;
     }
 
     private StringBuilder buildOutputMatrixHeader() {
@@ -290,7 +299,7 @@ public class MinimalHittingSetFacade {
 
     private void addPreProcessingInformationToStringJoiner(StringJoiner stringJoiner, long preProcessingTime, long memory, int rowsRemoved, int colsRemoved) {
         stringJoiner.add(String.valueOf(preProcessingTime));
-        stringJoiner.add(String.valueOf(bytesToMegaBytes(memory)));
+        stringJoiner.add(String.valueOf(memory));
         stringJoiner.add(String.valueOf(rowsRemoved));
         stringJoiner.add(String.valueOf(colsRemoved));
     }
@@ -367,7 +376,7 @@ public class MinimalHittingSetFacade {
      */
     private StringBuilder buildOutputHeaderString(String fileName, int initialRows, int initialCols, long timeout) {
         StringBuilder sb = new StringBuilder();
-        sb.append(";;; ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"))).append("\n");
+        sb.append(";;;\n").append(";;; ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"))).append("\n");
         sb.append(HEADER + "\n");
         sb.append("\t\t\tMatrix ").append(fileName).append("\n");
         sb.append(HEADER + "\n");
@@ -393,16 +402,16 @@ public class MinimalHittingSetFacade {
         sb.append(DOUBLE_LINE).append("\n");
         sb.append("Consumed memory (Pre-Elaboration): ").append(memory).append("MB\n");
         sb.append("Pre-Elaboration time: ").append(timePP).append(" ms\n");
-        sb.append("#Rows removed " + "(").append(rowsRemoved.size()).append(")").append(" : ").append(rowsRemoved).append("\n");
-        sb.append("#Columns removed " + "(").append(colsRemoved.size()).append(")").append(" : ").append(colsRemoved).append("\n");
+        sb.append("#Rows removed " + "(").append(rowsRemoved.size()).append(")").append(": ").append(rowsRemoved).append("\n");
+        sb.append("#Columns removed " + "(").append(colsRemoved.size()).append(")").append(": ").append(colsRemoved).append("\n");
         sb.append("Matrix Pre-Processed:\nSize: ").append(newInputIntMatrix.length).append("x").append(newInputIntMatrix[0].length).append("\n");
 
         if (verbose) {
             System.out.println("Pre-Processing time: " + timePP + " ms");
-            System.out.println("#Rows removed " + "(" + rowsRemoved + ")" + " : \n" + rowsRemoved);
-            System.out.println("#Columns removed " + "(" + colsRemoved + ")" + " \n: " + colsRemoved);
+            System.out.println("#Rows removed " + "(" + rowsRemoved.size() + ")" + ":\n" + rowsRemoved);
+            System.out.println("#Columns removed " + "(" + colsRemoved.size() + ")" + ":\n" + colsRemoved);
             System.out.println("Matrix Pre-Processed:\nSize: " + newInputIntMatrix.length + "x" + newInputIntMatrix[0].length);
-            printBoolMatrix(newInputIntMatrix);
+            printBoolMatrix(newInputIntMatrix, "");
         }
     }
 
@@ -416,7 +425,6 @@ public class MinimalHittingSetFacade {
     private void printInputMatrixInformation(int rows, int cols, String name) {
         System.out.println(DOUBLE_LINE);
         System.out.println("Input file: " + name);
-
         System.out.println("Size: " + rows + "x" + cols);
     }
 
@@ -425,36 +433,28 @@ public class MinimalHittingSetFacade {
      *
      * @param matrix
      * @param initialCols
-     * @param rowsRemoved
      * @param colsRemoved
-     * @param minCard
-     * @param maxCard
-     * @param debug
      */
-    private void printOutputInformation(boolean[][] matrix, int initialCols, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, long minCard, long maxCard, boolean debug) {
-        System.out.println("Output Matrix:");
+    private void printOutputInformation(boolean[][] matrix, int initialCols, ArrayList<Integer> colsRemoved) {
         System.out.println(LINE);
-
-        checkPrintOutputMatrix(matrix, rowsRemoved, colsRemoved, initialCols, debug);
+        checkPrintOutputMatrix(matrix, colsRemoved, initialCols);
     }
 
     /**
      * Method to build the matrix with the correct number of the initial input matrix columns.
      *
      * @param matrix
-     * @param rowsRemoved
      * @param colsRemoved
      * @param initialCols
-     * @param debug
      */
-    private void checkPrintOutputMatrix(boolean[][] matrix, ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, int initialCols, boolean debug) {
+    private void checkPrintOutputMatrix(boolean[][] matrix, ArrayList<Integer> colsRemoved, int initialCols) {
         if (matrix.length > STD_OUT_MHS_LIMIT) {
             System.out.println("MHS matrix too large to print on standard output. Check the report file, please.");
             return;
         }
 
         if (!preProcessing) {
-            printBoolMatrix(matrix);
+            printBoolMatrix(matrix, "Output Matrix:");
             return;
         }
 
@@ -467,7 +467,7 @@ public class MinimalHittingSetFacade {
             }
         }
 
-        printBoolMatrix(outputMatrix);
+        printBoolMatrix(outputMatrix, "Output Matrix");
 
     }
 
@@ -476,9 +476,9 @@ public class MinimalHittingSetFacade {
      *
      * @param boolMatrix
      */
-    private void printBoolMatrix(boolean[][] boolMatrix) {
+    private void printBoolMatrix(boolean[][] boolMatrix, String s) {
         if (verbose) {
-            System.out.println("Input Matrix:");
+            System.out.println(s);
             for (boolean[] intCol : boolMatrix) {
                 for (int j = 0; j < boolMatrix[0].length; j++) {
                     System.out.print(intCol[j] ? 1 + " " : 0 + " "); // Print each row of the matrix

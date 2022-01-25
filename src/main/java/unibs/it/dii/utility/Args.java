@@ -95,7 +95,7 @@ public class Args {
             validateWith = OutputDirectoryValidator.class
     )
 
-    private Path outputPath = Paths.get(System.getProperty("user.home") + "/output" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+    private Path outputPath = Paths.get(System.getProperty("user.home") + "/output-" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
 
     public Path getOutputPath() {
         return outputPath;

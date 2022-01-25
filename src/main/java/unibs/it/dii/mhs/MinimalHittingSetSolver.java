@@ -92,6 +92,8 @@ public class MinimalHittingSetSolver {
         StringBuilder sbHeaderMBase = new StringBuilder();
 
         boolean[][] inputBoolMatrix = matrix.getBoolMatrix();
+        // Matrix error to handle in MHSFacade otherwise it will be set to the output matrix
+        boolean[][] mhsBoolMatrix = new boolean[1][1];
 
         try {
 
@@ -124,14 +126,16 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF MEMORY\n"));
 
-                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
+                if (!mhsList.isEmpty()) {
+                    mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
-                try {
-                    printMHSFoundUpToInterruption(mhsBoolMatrix, timeout, outputFileWriter, colsRemoved, initialCols);
-                } catch (OutOfMemoryError me) {
-                    outOfMemory = true;
-                    System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY\n");
-                    outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
+                    try {
+                        writeMHSFoundUpToInterruption(mhsBoolMatrix, outputFileWriter, colsRemoved, initialCols);
+                    } catch (OutOfMemoryError me) {
+                        outOfMemory = true;
+                        System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY\n");
+                        outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
+                    }
                 }
             }
 
@@ -141,31 +145,35 @@ public class MinimalHittingSetSolver {
                 System.out.println("Execution interrupted > Cause: OUT OF TIME");
                 outputFileWriter.writeOutputFile(new StringBuilder("Execution interrupted > Cause: OUT OF TIME\n"));
 
-                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
+                if (!mhsList.isEmpty()) {
+                    mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
-                try {
-                    printMHSFoundUpToInterruption(mhsBoolMatrix, timeout, outputFileWriter, colsRemoved, initialCols);
-                } catch (OutOfMemoryError me) {
-                    System.err.println("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY");
-                    outputFileWriter.writeOutputFile(new StringBuilder("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY\n"));
-//                    outOfMemory = true;
+                    try {
+                        writeMHSFoundUpToInterruption(mhsBoolMatrix, outputFileWriter, colsRemoved, initialCols);
+                    } catch (OutOfMemoryError me) {
+                        System.err.println("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY");
+                        outputFileWriter.writeOutputFile(new StringBuilder("Impossible to print output matrix on .out file > Cause : OUT OF MEMORY\n"));
+//                        outOfMemory = true;
+                    }
                 }
             }
 
             try {
 
-                boolean[][] mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
-
-                mhsMatrix.setName(matrix.getName());
-                mhsMatrix.setBoolMatrix(mhsBoolMatrix);
+                if (!outOfTime && !outOfMemory)
+                    mhsBoolMatrix = outputMatrixBuilder.getMHSBoolOutputMatrix(mhsList, inputBoolMatrix[0].length);
 
             } catch (OutOfMemoryError me) {
                 System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
                 outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
             }
 
+            mhsMatrix.setName(matrix.getName());
+            mhsMatrix.setBoolMatrix(mhsBoolMatrix);
+
         } catch (OutOfMemoryError me) {
-            System.err.println("OUT OF MEMORY");
+            System.err.println("Impossible to get output matrix > Cause: OUT OF MEMORY");
+            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
         }
 
         return mhsMatrix;
@@ -250,21 +258,12 @@ public class MinimalHittingSetSolver {
 
     /**
      * @param matrix
-     * @param timeout
      * @param outputFileWriter
      * @param colsRemoved
      * @param initialCols
      * @throws IOException
      */
-    private void printMHSFoundUpToInterruption(boolean[][] matrix, long timeout, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
-//        for (int i = 0; i < mhsList.size(); i++) {
-//            boolean[] mhs = mhsList.get(i);
-//            for (int j = 0; j < mhs.length; j++) {
-//                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
-//            }
-//            sb.append("-\n");
-//        }
-
+    private void writeMHSFoundUpToInterruption(boolean[][] matrix, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
         try {
             outputFileWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
         } catch (OutOfMemoryError me) {
@@ -272,9 +271,7 @@ public class MinimalHittingSetSolver {
             System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
 //            System.exit(-1);
         }
-
-        System.out.println("For more details: " + outputFileWriter.getOutputFile().getAbsolutePath());
-//        System.exit(100);
+//        System.out.println("For more details: " + outputFileWriter.getOutputFile().getAbsolutePath());
     }
 
     /**
