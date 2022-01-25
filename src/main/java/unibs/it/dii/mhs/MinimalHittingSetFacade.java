@@ -160,7 +160,7 @@ public class MinimalHittingSetFacade {
                 inputMatrix.setBoolMatrix(newInputBoolMatrix);
             }
 
-            addPreProcessingInformationToStringJoiner(stringJoiner, preProcessingTime, memoryConsumedPP, colsRemoved.size(), rowsRemoved.size());
+            addPreProcessingInformationToStringJoiner(stringJoiner, preProcessingTime, memoryConsumedPP, rowsRemoved.size(), colsRemoved.size());
 
             printStatusInformation(MSG_MBASE_EXECUTION);
 
