@@ -6,9 +6,6 @@ import unibs.it.dii.mhs.builder.Director;
 import unibs.it.dii.mhs.builder.MinimalHittingSetFacadeBuilder;
 import unibs.it.dii.utility.*;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-
 public class MinimalHittingSetMain {
 
     public static void main(String[] args) throws Exception {

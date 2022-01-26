@@ -147,6 +147,7 @@ public class MinimalHittingSetSolver {
         } catch (OutOfMemoryError me) {
             System.err.println("Problems with the execution of MBase > Cause: OUT OF MEMORY");
             outputFileWriter.writeOutputFile(new StringBuilder("Problems with the execution of MBase > Cause: OUT OF MEMORY\n"));
+            mhsMatrix.setBoolMatrix(new boolean[1][1]); // Error matrix
         }
 
         return mhsMatrix;
@@ -198,7 +199,7 @@ public class MinimalHittingSetSolver {
      * @param e
      * @return
      */
-    private long getCardinality(boolean[] e) {
+    private int getCardinality(boolean[] e) {
         return Booleans.countTrue(e);
     }
 
@@ -291,6 +292,14 @@ public class MinimalHittingSetSolver {
                 try {
                     boolean[] newE = Arrays.copyOf(e, e.length);
                     newE[i] = true;
+
+                    int currentCardinality = getCardinality(newE);
+
+                    if (minCardinality == 0)
+                        minCardinality = currentCardinality;
+
+                    if (maxCardinality < currentCardinality)
+                        maxCardinality = currentCardinality;
 
                     if (debug)
                         System.out.println("Element: " + Arrays.toString(newE));
