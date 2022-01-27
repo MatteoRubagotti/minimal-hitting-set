@@ -24,11 +24,11 @@ public class MinimalHittingSetSolver {
 
     private boolean outOfTime;
     private boolean outOfMemory;
-    private long minCardinality;
-    private long maxCardinality;
+    private int minCardinality;
+    private int maxCardinality;
     private long executionTime;
-    private int numberMHSFound;
     private long consumedMemory;
+    private int numberMHSFound;
     private boolean debug;
 
     public MinimalHittingSetSolver(boolean debug) {
@@ -101,7 +101,7 @@ public class MinimalHittingSetSolver {
             long startTimeMBase = System.currentTimeMillis();
 
             // List of all MHS found
-            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout, runtime);
+            ArrayList<boolean[]> mhsList = solve(inputBoolMatrix, timeout);
 
             executionTime = System.currentTimeMillis() - startTimeMBase;
 
@@ -151,77 +151,21 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * Method to reset the internal state of the solver.
-     */
-    private void resetSolverVariables() {
-        this.outOfMemory = false;
-        this.outOfTime = false;
-        this.numberMHSFound = 0;
-        this.executionTime = 0;
-        this.maxCardinality = 0;
-        this.minCardinality = 0;
-        this.consumedMemory = 0;
-    }
-
-//    /**
-//     * @param runtime
-//     * @param sbHeaderMBase
-//     */
-//    private void buildMBaseExecutionInformation(Runtime runtime, StringBuilder sbHeaderMBase) {
-//        sbHeaderMBase.append(DOUBLE_LINE).append("\n");
-//        sbHeaderMBase.append("\t\t\t\tMBase").append("\n");
-//        sbHeaderMBase.append(DOUBLE_LINE).append("\n");
-//        sbHeaderMBase.append("Consumed memory (MBase): ").append(bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory())).append(" MB\n");
-//        sbHeaderMBase.append("MBase time: ").append(executionTime).append(" ms").append("\n");
-//        sbHeaderMBase.append("Minimum cardinality: ").append(minCardinality).append("\n");
-//        sbHeaderMBase.append("Maximum cardinality: ").append(maxCardinality).append("\n");
-//        sbHeaderMBase.append("Number of MHS found: ").append(numberMHSFound).append("\n");
-//    }
-
-    /**
-     * @param runtime
-     */
-    private void printMBaseExecutionInformation(Runtime runtime) {
-        System.out.println("Number of MHS found (in " + executionTime + " ms)" + ": " + numberMHSFound);
-        System.out.println("Minimum cardinality: " + minCardinality);
-        System.out.println("Maximum cardinality: " + maxCardinality);
-        printUsedMemory(runtime, "Consumed memory (MBase): ");
-    }
-
-    /**
-     * Method to compute the cardinality of the MHS found.
-     *
-     * @param e
-     * @return
-     */
-    private int getCardinality(boolean[] e) {
-        return Booleans.countTrue(e);
-    }
-
-    /**
-     * @param runtime
-     * @param s
-     */
-    private void printUsedMemory(Runtime runtime, String s) {
-        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
-        System.out.println(s + bytesToMegaBytes(memoryAfter) + "MB");
-    }
-
-    /**
      * MBase procedure
      *
      * @param boolMatrix The input matrix from benchmark file (e.g. ####.####.matrix)
      * @param timeout    The maximum time limit
-     * @param runtime
      * @return The list of MHS found
      */
-    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, Runtime runtime) throws Exception {
+    private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout) throws Exception {
+        Runtime runtime = Runtime.getRuntime();
+
 //        final int rows = boolMatrix.length; // N = number of rows
         final int cols = boolMatrix[0].length; // number of columns = X <= M
 
         // Create the list of MHS
         final ArrayList<boolean[]> mhsList = new ArrayList<>();
-        // Create the queue to store the sets lexicographical elements
+        // Create the queue to store the subsets of lexicographical elements
         final Queue<boolean[]> queue = new LinkedList<>();
 
         // Add empty vector [0 0 ... 0]
@@ -230,7 +174,7 @@ public class MinimalHittingSetSolver {
         long startTime = System.currentTimeMillis();
 
         while (!queue.isEmpty() && (System.currentTimeMillis() - startTime) <= timeout) {
-            // Get the first element of the queue
+            // Get the first element of the queue (Q)
             boolean[] e = queue.poll();
 
             if (debug) {
@@ -308,6 +252,49 @@ public class MinimalHittingSetSolver {
 
         // Return the list of MHS computed anyway
         return mhsList;
+    }
+
+    /**
+     * Method to reset the internal state of the solver.
+     */
+    private void resetSolverVariables() {
+        this.outOfMemory = false;
+        this.outOfTime = false;
+        this.numberMHSFound = 0;
+        this.executionTime = 0;
+        this.maxCardinality = 0;
+        this.minCardinality = 0;
+        this.consumedMemory = 0;
+    }
+
+    /**
+     *
+     * @param runtime
+     */
+    private void printMBaseExecutionInformation(Runtime runtime) {
+        System.out.println("Number of MHS found (in " + executionTime + " ms)" + ": " + numberMHSFound);
+        System.out.println("Minimum cardinality: " + minCardinality);
+        System.out.println("Maximum cardinality: " + maxCardinality);
+        printUsedMemory(runtime, "Consumed memory (MBase): ");
+    }
+
+    /**
+     * Method to compute the cardinality of the MHS found.
+     *
+     * @param e a subset of lexicographical elements
+     * @return the number of active lexicographical elements, namely the cardinality
+     */
+    private int getCardinality(boolean[] e) {
+        return Booleans.countTrue(e);
+    }
+
+    /**
+     * @param runtime
+     * @param s
+     */
+    private void printUsedMemory(Runtime runtime, String s) {
+        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+        System.out.println(s + bytesToMegaBytes(memoryAfter) + "MB");
     }
 
     /**
@@ -470,9 +457,9 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * Method to compute the first element in lexicographical order.
+     * Method to compute the first element in lexicographical order active in the subset.
      *
-     * @param e
+     * @param e a subset of elements in lexicographical order
      * @return the position of the first lexicographical element
      */
     private int getFirstElement(boolean[] e) throws Exception {
