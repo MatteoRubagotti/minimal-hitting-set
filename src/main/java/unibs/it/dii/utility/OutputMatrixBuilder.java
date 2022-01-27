@@ -11,7 +11,7 @@ public class OutputMatrixBuilder {
      * @return
      */
     public boolean[][] getMHSBoolOutputMatrix(ArrayList<boolean[]> mhsList, int cols) {
-        boolean[][] outputMatrix = new boolean[mhsList.size()][cols]; // K x X, where K is the number of MHS found and X <= M
+        boolean[][] outputMatrix = new boolean[mhsList.size()][cols]; // H x K, where H is the number of MHS found and K <= M
         int row = 0;
 
         for (boolean[] mhs : mhsList) {

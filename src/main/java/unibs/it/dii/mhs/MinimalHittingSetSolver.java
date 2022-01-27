@@ -11,6 +11,9 @@ import java.util.*;
 import static java.lang.Integer.min;
 import static unibs.it.dii.mhs.MinimalHittingSetFacade.bytesToMegaBytes;
 
+/**
+ *
+ */
 public class MinimalHittingSetSolver {
 
     final static private String DOUBLE_LINE = "=========================================================================";
@@ -72,14 +75,11 @@ public class MinimalHittingSetSolver {
      *
      * @param matrix
      * @param timeout
-     * @param runtime
      * @param outputFileWriter
-     * @param colsRemoved
-     * @param initialCols
      * @return The output matrix of the all MHS found
      * @throws Exception
      */
-    public Matrix execute(Matrix matrix, long timeout, Runtime runtime, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws Exception {
+    public Matrix execute(Matrix matrix, long timeout, OutputFileWriter outputFileWriter) throws Exception {
         // Reset the variables for each method call
         resetSolverVariables();
 
@@ -93,6 +93,8 @@ public class MinimalHittingSetSolver {
         boolean[][] inputBoolMatrix = matrix.getBoolMatrix();
         // Matrix error to handle in MHSFacade otherwise it will be set to the output matrix
         boolean[][] mhsBoolMatrix = new boolean[1][1];
+
+        Runtime runtime = Runtime.getRuntime();
 
         try {
 
@@ -112,12 +114,7 @@ public class MinimalHittingSetSolver {
                 maxCardinality = getCardinality(mhsList.get(mhsList.size() - 1));
             }
 
-            printMBaseExecutionInformation(runtime, executionTime);
-
-            buildMBaseExecutionInformation(runtime, executionTime, sbHeaderMBase);
-
-            // Write the information built before in the output report
-            outputFileWriter.writeOutputFile(sbHeaderMBase);
+            printMBaseExecutionInformation(runtime);
 
             // MBase execution OUT OF MEMORY
             if (outOfMemory) {
@@ -166,27 +163,25 @@ public class MinimalHittingSetSolver {
         this.consumedMemory = 0;
     }
 
-    /**
-     * @param runtime
-     * @param executionTime
-     * @param sbHeaderMBase
-     */
-    private void buildMBaseExecutionInformation(Runtime runtime, long executionTime, StringBuilder sbHeaderMBase) {
-        sbHeaderMBase.append(DOUBLE_LINE).append("\n");
-        sbHeaderMBase.append("\t\t\t\tMBase").append("\n");
-        sbHeaderMBase.append(DOUBLE_LINE).append("\n");
-        sbHeaderMBase.append("Consumed memory (MBase): ").append(bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory())).append(" MB\n");
-        sbHeaderMBase.append("MBase time: ").append(executionTime).append(" ms").append("\n");
-        sbHeaderMBase.append("Minimum cardinality: ").append(minCardinality).append("\n");
-        sbHeaderMBase.append("Maximum cardinality: ").append(maxCardinality).append("\n");
-        sbHeaderMBase.append("Number of MHS found: ").append(numberMHSFound).append("\n");
-    }
+//    /**
+//     * @param runtime
+//     * @param sbHeaderMBase
+//     */
+//    private void buildMBaseExecutionInformation(Runtime runtime, StringBuilder sbHeaderMBase) {
+//        sbHeaderMBase.append(DOUBLE_LINE).append("\n");
+//        sbHeaderMBase.append("\t\t\t\tMBase").append("\n");
+//        sbHeaderMBase.append(DOUBLE_LINE).append("\n");
+//        sbHeaderMBase.append("Consumed memory (MBase): ").append(bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory())).append(" MB\n");
+//        sbHeaderMBase.append("MBase time: ").append(executionTime).append(" ms").append("\n");
+//        sbHeaderMBase.append("Minimum cardinality: ").append(minCardinality).append("\n");
+//        sbHeaderMBase.append("Maximum cardinality: ").append(maxCardinality).append("\n");
+//        sbHeaderMBase.append("Number of MHS found: ").append(numberMHSFound).append("\n");
+//    }
 
     /**
      * @param runtime
-     * @param executionTime
      */
-    private void printMBaseExecutionInformation(Runtime runtime, long executionTime) {
+    private void printMBaseExecutionInformation(Runtime runtime) {
         System.out.println("Number of MHS found (in " + executionTime + " ms)" + ": " + numberMHSFound);
         System.out.println("Minimum cardinality: " + minCardinality);
         System.out.println("Maximum cardinality: " + maxCardinality);
@@ -202,51 +197,6 @@ public class MinimalHittingSetSolver {
     private int getCardinality(boolean[] e) {
         return Booleans.countTrue(e);
     }
-
-//    /**
-//     * @param mhsList
-//     * @param timeout
-//     * @param outputFileWriter
-//     * @throws IOException
-//     */
-//    private void printMHSFoundUpToOutOfMemory(ArrayList<boolean[]> mhsList, long timeout, OutputFileWriter outputFileWriter) throws IOException {
-//        StringBuilder sb = new StringBuilder();
-//
-//        for (int i = 0; i < mhsList.size(); i++) {
-//            boolean[] mhs = mhsList.get(i);
-//            for (int j = 0; j < mhs.length; j++) {
-//                sb.append(mhs[j] ? 1 + " " : 0 + " ").append(" ");
-//            }
-//            sb.append("-\n");
-//        }
-//
-//        try {
-//            outputFileWriter.writeOutputFile(sb);
-//        } catch (OutOfMemoryError | IOException me) {
-//            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix > Cause: OUT OF MEMORY\n"));
-//            System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
-//        }
-//
-////        System.exit(200);
-//    }
-
-//    /**
-//     * @param matrix
-//     * @param outputFileWriter
-//     * @param colsRemoved
-//     * @param initialCols
-//     * @throws IOException
-//     */
-//    private void writeMHSFoundUpToInterruption(boolean[][] matrix, OutputFileWriter outputFileWriter, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
-//        try {
-//            outputFileWriter.writeOutputMatrix(matrix, colsRemoved, initialCols);
-//        } catch (OutOfMemoryError me) {
-//            outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write the output matrix > Cause: OUT OF MEMORY\n"));
-//            System.err.println("Writing output file interrupted > Cause: OUT OF MEMORY");
-////            System.exit(-1);
-//        }
-////        System.out.println("For more details: " + outputFileWriter.getOutputFile().getAbsolutePath());
-//    }
 
     /**
      * @param runtime
@@ -266,7 +216,7 @@ public class MinimalHittingSetSolver {
      * @return The list of MHS found
      */
     private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout, Runtime runtime) throws Exception {
-        final int rows = boolMatrix.length; // N = number of rows
+//        final int rows = boolMatrix.length; // N = number of rows
         final int cols = boolMatrix[0].length; // number of columns = X <= M
 
         // Create the list of MHS
@@ -314,7 +264,7 @@ public class MinimalHittingSetSolver {
                     final int[] rv = getRepresentativeVector(subMatrix);
 
                     // Scan the representative vector (subset of M)
-                    int result = checkModule(rv, subMatrix.getElements(), debug);
+                    int result = checkModule(rv, subMatrix.getElements());
 
                     if (debug) {
                         System.out.println("RV" + i + ": " + Arrays.toString(rv));
@@ -421,7 +371,7 @@ public class MinimalHittingSetSolver {
      * @param elements The lexicographical elements considered
      * @return MHS = 2, OK = 1, KO = 0
      */
-    private int checkModule(int[] rv, ArrayList<Integer> elements, boolean debug) throws Exception {
+    private int checkModule(int[] rv, ArrayList<Integer> elements) throws Exception {
         // RV does not have 0 inside
         boolean empty = false;
 
@@ -442,7 +392,7 @@ public class MinimalHittingSetSolver {
         }
 
         if (debug)
-            System.out.println("elementsFound: " + elementsFound.toString());
+            System.out.println("elementsFound: " + elementsFound);
 
         // RV is completely projected on the lexicographical element considered (i.e. P(RV) = E)
         boolean rvFullProjected = true;

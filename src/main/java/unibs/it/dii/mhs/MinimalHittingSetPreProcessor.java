@@ -161,7 +161,7 @@ public class MinimalHittingSetPreProcessor {
     }
 
     /**
-     * Method to remove columns from a matrix.
+     * Method to remove empty columns from a matrix.
      *
      * @param matrix
      * @return
@@ -177,7 +177,6 @@ public class MinimalHittingSetPreProcessor {
         }
 
         int rows = transposeMatrix.length; // REMEMBER: matrix is transposed!
-        final Set<Integer> rowsToRemove = new HashSet<>();
 
         for (int i = 0; i < rows; i++) { // rows = columns of original matrix
             if (colIsEmpty(transposeMatrix[i], i))
@@ -234,12 +233,12 @@ public class MinimalHittingSetPreProcessor {
      */
     private boolean colIsEmpty(boolean[] col, int numCol) {
         int count = 0;
-        for (boolean b : col) if (b) count++;
+        for (boolean b : col) if (b) return false;
 
         if (debug)
-            System.out.println("Column" + numCol + ": " + Booleans.asList(col).toString() + "\nEmpty: " + (count == 0));
+            System.out.println("Column" + numCol + ": " + Booleans.asList(col) + "\nEmpty: " + (count == 0));
 
-        return (count == 0);
+        return true;
     }
 
 }

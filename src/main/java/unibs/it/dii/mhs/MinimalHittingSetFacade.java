@@ -26,6 +26,7 @@ public class MinimalHittingSetFacade {
     final static private String MSG_MBASE_EXECUTION = "\t\t\t\tMBase Execution...";
     final static private String MSG_WRITING_FILE = "\t\t\t\tWriting output file...";
     final static private String MSG_WRITING_CSV = "\t\t\t\tWriting CSV...";
+    public static final String MSG_INITIAL_MEMORY_AVAILABLE = "\t\t\tInitial memory available: ";
 
     final static private String PATH_TO_CSV = "./csv";
     final static private String CSV_FILE_NAME = "mhs-report-" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) + ".csv";
@@ -164,7 +165,7 @@ public class MinimalHittingSetFacade {
 
             printStatusInformation(MSG_MBASE_EXECUTION);
 
-            printTotalMemoryAvailable(runtime, "\t\t\tInitial memory available: ");
+            printTotalMemoryAvailable(runtime, MSG_INITIAL_MEMORY_AVAILABLE);
 
             if (debugMode)
                 printUsedMemory("Consumed memory before MBase execution: ", runtime);
@@ -181,7 +182,7 @@ public class MinimalHittingSetFacade {
             HashMap<String, String> informationMBase = new HashMap<>();
 
             // Execution of MBase procedure
-            Matrix outputMatrix = solver.execute(inputMatrix, residualTime, runtime, outputFileWriter, colsRemoved, initialCols);
+            Matrix outputMatrix = solver.execute(inputMatrix, residualTime, outputFileWriter);
 
             // Execution time of MBase procedure
             informationMBase.put("time", String.valueOf(solver.getExecutionTime()));
@@ -202,7 +203,7 @@ public class MinimalHittingSetFacade {
 
             printStatusInformation(MSG_WRITING_FILE);
 
-            outputFileWriter.writeOutputFile(buildOutputMatrixHeader());
+            outputFileWriter.writeOutputFile(buildOutputMatrixHeader(informationMBase));
 
             if (errorWithOutputMatrix(outputMatrix)) {
                 System.err.println("Impossible to get output matrix (e.g. empty)");
@@ -242,8 +243,20 @@ public class MinimalHittingSetFacade {
         return outputMatrix.getBoolMatrix()[0].length == 1;
     }
 
-    private StringBuilder buildOutputMatrixHeader() {
-        return new StringBuilder(LINE + "\n" + "Output Matrix:\n");
+    private StringBuilder buildOutputMatrixHeader(HashMap<String, String> information) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(DOUBLE_LINE).append("\n");
+        sb.append("\t\t\t\tMBase").append("\n");
+        sb.append(DOUBLE_LINE).append("\n");
+        sb.append("Consumed memory (MBase): ").append(information.get("memory")).append(" MB\n");
+        sb.append("MBase time: ").append(information.get("time")).append(" ms").append("\n");
+        sb.append("Minimum cardinality: ").append(information.get("min")).append("\n");
+        sb.append("Maximum cardinality: ").append(information.get("max")).append("\n");
+        sb.append("Number of MHS found: ").append(information.get("mhs")).append("\n");
+        sb.append(LINE + "\n" + "Output Matrix:\n");
+
+        return sb;
     }
 
     private void printStatusInformation(String status) {
@@ -322,7 +335,7 @@ public class MinimalHittingSetFacade {
      * @throws IOException
      */
     private File getOutputFile(String inputMatrixName) throws IOException {
-        String outputFileName = new String(outputPath.toString() + "/" + inputMatrixName);
+        String outputFileName = (outputPath.toString() + "/" + inputMatrixName);
 
         // Create the output file
         File outputFile = outputFileWriter.createOutputFile(preProcessing, outputFileName);
@@ -424,7 +437,7 @@ public class MinimalHittingSetFacade {
      */
     private void printInputMatrixInformation(int rows, int cols, String name) {
         System.out.println(DOUBLE_LINE);
-        System.out.println("Input file: " + name);
+        System.out.println("Input Matrix: " + name);
         System.out.println("Size: " + rows + "x" + cols);
     }
 

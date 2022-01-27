@@ -2,13 +2,10 @@ package unibs.it.dii.utility;
 
 import org.apache.commons.io.FilenameUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 
 public class BenchmarkDirectoryReader {
@@ -25,7 +22,7 @@ public class BenchmarkDirectoryReader {
         Queue<String> results = new LinkedList<>();
 
         // If this pathname does not denote a directory, then listFiles() returns null.
-        File[] files = new File(benchmarkDirectory.toString()).listFiles();
+//        File[] files = new File(benchmarkDirectory.toString()).listFiles();
 
 //        String[] filesString = {"74181.032.matrix", "74181.043.matrix", "74181.053.matrix",
 //                    "c432.010.matrix", "c432.044.matrix", "c1355.039.matrix",
