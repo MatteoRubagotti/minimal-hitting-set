@@ -1,5 +1,8 @@
 package unibs.it.dii.mhs.model;
 
+/**
+ * This class represents a matrix, namely the input of the MBase algorithm.
+ */
 public class Matrix {
 
     private boolean[][] boolMatrix;

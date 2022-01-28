@@ -1,11 +1,9 @@
 package unibs.it.dii.mhs.builder;
 
 import unibs.it.dii.mhs.MinimalHittingSetFacade;
-import unibs.it.dii.mhs.MinimalHittingSetSolver;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Queue;
 
 public class MinimalHittingSetFacadeBuilder implements FacadeBuilder {
     private boolean preProcessing;

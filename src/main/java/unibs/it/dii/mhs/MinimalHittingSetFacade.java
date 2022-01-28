@@ -2,6 +2,8 @@ package unibs.it.dii.mhs;
 
 import com.opencsv.CSVWriter;
 import unibs.it.dii.mhs.model.Matrix;
+import unibs.it.dii.mhs.model.MinimalHittingSetPreProcessor;
+import unibs.it.dii.mhs.model.MinimalHittingSetSolver;
 import unibs.it.dii.utility.*;
 
 import java.io.File;
@@ -16,6 +18,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Class to manage the Minimal Hitting Set execution.
+ */
 public class MinimalHittingSetFacade {
     final static private String DOUBLE_LINE = "=========================================================================";
     final static private String LINE = "-------------------------------------------------------------------------";
@@ -36,9 +41,6 @@ public class MinimalHittingSetFacade {
     private static final long MEGABYTE = 1024L * 1024L;
     final static public int STD_OUT_MHS_LIMIT = 10000;
 
-    /**
-     *
-     */
     final private boolean preProcessing;
     final private boolean verbose;
     final private Path inputPath;
@@ -63,6 +65,8 @@ public class MinimalHittingSetFacade {
     }
 
     /**
+     * Method to call the entire sub-routines to find the MHS matrix
+     *
      * @throws Exception
      */
     public void find() throws Exception {
@@ -73,9 +77,6 @@ public class MinimalHittingSetFacade {
         final Runtime runtime = Runtime.getRuntime();
         // Run the garbage collector
         runtime.gc();
-
-        if (verbose)
-            System.out.println("Max memory available: " + bytesToMegaBytes(runtime.maxMemory()) + " MB");
 
         final Path csvPath = Paths.get(PATH_TO_CSV + "/" + CSV_FILE_NAME);
         // Create CSV writer object
@@ -88,7 +89,7 @@ public class MinimalHittingSetFacade {
         if (debugMode)
             benchmarkFileQueue.forEach(System.out::println);
 
-        printStartingMessage(benchmarkFileQueue);
+        printStartingMessage(benchmarkFileQueue.size());
 
         int numberFileToProcess = benchmarkFileQueue.size();
 
@@ -111,7 +112,8 @@ public class MinimalHittingSetFacade {
             // Create the matrix object
             final Matrix inputMatrix = reader.readMatrixFromFile(inputFile);
 
-            printBoolMatrix(inputMatrix.getBoolMatrix(), "Input Matrix:");
+            if (verbose)
+                printBoolMatrix(inputMatrix.getBoolMatrix(), "Input Matrix:");
 
             // Get the size of initial input matrix
             int initialRows = inputMatrix.getBoolMatrix().length;
@@ -165,7 +167,7 @@ public class MinimalHittingSetFacade {
 
             printStatusInformation(MSG_MBASE_EXECUTION);
 
-            printTotalMemoryAvailable(runtime, MSG_INITIAL_MEMORY_AVAILABLE);
+            printInitialMemoryAvailable(runtime, MSG_INITIAL_MEMORY_AVAILABLE);
 
             if (debugMode)
                 printUsedMemory("Consumed memory before MBase execution: ", runtime);
@@ -219,7 +221,7 @@ public class MinimalHittingSetFacade {
 
             if (verbose && !errorWithOutputMatrix(outputMatrix)) {
                 try {
-                    printOutputInformation(outputMatrix.getBoolMatrix(), initialCols, colsRemoved);
+                    checkPrintOutputMatrix(outputMatrix.getBoolMatrix(), initialCols, colsRemoved);
                 } catch (OutOfMemoryError me) {
                     System.err.println("Impossible to write output matrix on file .out > Cause: OUT OF MEMORY");
                     outputFileWriter.writeOutputFile(new StringBuilder("Impossible to write output matrix on file .out > Cause: OUT OF MEMORY\n"));
@@ -239,10 +241,23 @@ public class MinimalHittingSetFacade {
 
     }
 
+    /**
+     * Check if the output matrix is empty or some OutOfMemoryError occurred by calling the
+     * {@link MinimalHittingSetSolver#execute(Matrix, long, OutputFileWriter)} execute } method.
+     *
+     * @param outputMatrix the output matrix
+     * @return true if the output matrix is empty or some errors occurred
+     */
     private boolean errorWithOutputMatrix(Matrix outputMatrix) {
         return outputMatrix.getBoolMatrix()[0].length == 1;
     }
 
+    /**
+     * Create the StringBuilder in order to write the information in the output file.
+     *
+     * @param information the HashMap of the information about MBase execution
+     * @return the StringBuilder of information to write on output file
+     */
     private StringBuilder buildOutputMatrixHeader(HashMap<String, String> information) {
         StringBuilder sb = new StringBuilder();
 
@@ -276,15 +291,19 @@ public class MinimalHittingSetFacade {
             BenchmarkDirectoryReader directoryReader = new BenchmarkDirectoryReader(inputDirectoryPath);
             benchmarkFileQueue = directoryReader.getListBenchmarkFileMatrix();
 
-//            while (!benchmarkFileQueue.isEmpty())
-//                benchmarkFileQueue.add(benchmarkFileQueue.poll());
         } else {
             benchmarkFileQueue.add(inputPath.toString());
         }
     }
 
-    private void printStartingMessage(Queue<String> benchmarkFileQueue) throws InterruptedException {
-        System.out.println("Number of benchmark file to process: " + benchmarkFileQueue.size());
+    /**
+     * Method to print on the standard output the start of the execution and the number of files to process.
+     *
+     * @param numberOfFiles the number of files to process
+     * @throws InterruptedException
+     */
+    private void printStartingMessage(int numberOfFiles) throws InterruptedException {
+        System.out.println("Number of benchmark files to process: " + numberOfFiles);
         System.out.print("Starting");
         for (int i = 0; i < 3; ++i) {
             TimeUnit.MILLISECONDS.sleep(500);
@@ -293,11 +312,26 @@ public class MinimalHittingSetFacade {
         System.out.println();
     }
 
+    /**
+     * Method to write the final report information on the CSV file.
+     *
+     * @param pathString   the path of the CSV file
+     * @param stringJoiner a StringJoiner object of information separated by commas
+     * @throws IOException
+     */
     private void writeCSVInformationReport(String pathString, StringJoiner stringJoiner) throws IOException {
         csvWriter.setWriter(new CSVWriter(new FileWriter(pathString, true)));
         csvWriter.writeCSV(stringJoiner.toString().split(","));
     }
 
+    /**
+     * Method to update the StringJoiner object with the all information about the MBase execution.
+     *
+     * @param stringJoiner the StringJoiner to update
+     * @param information  the information about the execution
+     * @param initialRows  the number of rows of the matrix in the input file
+     * @param initialCols  the number of columns of the matrix in the input file
+     */
     private void addMBaseInformationToStringJoiner(StringJoiner stringJoiner, HashMap<String, String> information, int initialRows, int initialCols) {
         stringJoiner.add(information.get("time"));
         stringJoiner.add(information.get("memory"));
@@ -310,6 +344,15 @@ public class MinimalHittingSetFacade {
         stringJoiner.add(information.get("mhs"));
     }
 
+    /**
+     * Method to append the information about the pre-processing operation.
+     *
+     * @param stringJoiner      the StringJoiner to update
+     * @param preProcessingTime the time to perform the pre-processing
+     * @param memory            the memory consumed to perform the pre-processing
+     * @param rowsRemoved       the number of rows removed
+     * @param colsRemoved       the number of columns removed
+     */
     private void addPreProcessingInformationToStringJoiner(StringJoiner stringJoiner, long preProcessingTime, long memory, int rowsRemoved, int colsRemoved) {
         stringJoiner.add(String.valueOf(preProcessingTime));
         stringJoiner.add(String.valueOf(memory));
@@ -318,10 +361,10 @@ public class MinimalHittingSetFacade {
     }
 
     /**
-     * Method to convert bytes into MB.
+     * Method to convert Bytes into MBytes.
      *
-     * @param bytes
-     * @return a value in MB
+     * @param bytes the value in bytes
+     * @return the value in MB
      */
     public static long bytesToMegaBytes(long bytes) {
         return bytes / MEGABYTE;
@@ -330,12 +373,12 @@ public class MinimalHittingSetFacade {
     /**
      * Method to create the output file path.
      *
-     * @param inputMatrixName
-     * @return
+     * @param inputMatrixName the name of the input matrix
+     * @return a File object with the correct output path
      * @throws IOException
      */
     private File getOutputFile(String inputMatrixName) throws IOException {
-        String outputFileName = (outputPath.toString() + "/" + inputMatrixName);
+        String outputFileName = (outputPath + "/" + inputMatrixName);
 
         // Create the output file
         File outputFile = outputFileWriter.createOutputFile(preProcessing, outputFileName);
@@ -349,7 +392,7 @@ public class MinimalHittingSetFacade {
      * @param runtime
      * @param s
      */
-    private void printTotalMemoryAvailable(Runtime runtime, String s) {
+    private void printInitialMemoryAvailable(Runtime runtime, String s) {
         System.out.println(LINE);
         System.out.println(s + bytesToMegaBytes(runtime.maxMemory()) + " MB");
         System.out.println(LINE);
@@ -358,12 +401,12 @@ public class MinimalHittingSetFacade {
     /**
      * Method to create the CSV file if it does not exist and create the CSV header.
      *
-     * @param csvPath
-     * @param writer
+     * @param csvPath the path to CSV file
+     * @param writer  the OutputCSVWriter object to initialize the CSV header, if necessary
      * @throws IOException
      */
     private void checkCSVPath(Path csvPath, OutputCSVWriter writer) throws IOException {
-        if (!Files.exists(Paths.get(PATH_TO_CSV))) // ./csv directory does not exist
+        if (!Files.exists(Paths.get(PATH_TO_CSV))) // ./csv/ directory does not exist
             Files.createDirectories(Paths.get(PATH_TO_CSV));
 
         if (!Files.exists(csvPath)) { // The file .csv does not exist
@@ -372,26 +415,26 @@ public class MinimalHittingSetFacade {
 
         if (csvPath.toFile().length() == 0) {
             writer.setWriter(new CSVWriter(new FileWriter(csvPath.toFile().toString(), true)));
-//            writer.setReader(new CSVReader(new FileReader(csvPath.toFile().toString()))); // Not used yet!
             // Create the header of csv
             writer.writeCSV(CSV_HEADER.split(","));
         }
     }
 
     /**
-     * Method to build the output header for report file.
+     * Method to build the output header for report output file.
      *
-     * @param fileName
-     * @param initialRows
-     * @param initialCols
-     * @param timeout
-     * @return
+     * @param matrixName  the name of the input matrix
+     * @param initialRows the number of rows
+     * @param initialCols the number of columns
+     * @param timeout     the timeout for the execution
+     * @return a StringBuilder with the header for the output file
      */
-    private StringBuilder buildOutputHeaderString(String fileName, int initialRows, int initialCols, long timeout) {
+    private StringBuilder buildOutputHeaderString(String matrixName, int initialRows, int initialCols, long timeout) {
         StringBuilder sb = new StringBuilder();
+
         sb.append(";;;\n").append(";;; ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss"))).append("\n");
         sb.append(HEADER + "\n");
-        sb.append("\t\t\tMatrix ").append(fileName).append("\n");
+        sb.append("\t\t\tMatrix ").append(matrixName).append("\n");
         sb.append(HEADER + "\n");
         sb.append("Timeout: ").append(timeout).append(" ms\n");
         sb.append("Input Matrix:\n").append("Size: ").append(initialRows).append("x").append(initialCols).append("\n");
@@ -401,14 +444,14 @@ public class MinimalHittingSetFacade {
     }
 
     /**
-     * Method to build the pre-processing operation report information
+     * Method to build the pre-processing operation report information.
      *
-     * @param rowsRemoved
-     * @param colsRemoved
-     * @param newInputIntMatrix
-     * @param timePP
-     * @param sb
-     * @param memory
+     * @param rowsRemoved       the number of rows removed
+     * @param colsRemoved       the number of columns removed
+     * @param newInputIntMatrix the "new" matrix with the dimensions updated
+     * @param timePP            the time of pre-processing execution
+     * @param sb                the StringBuilder with the information of the output file header
+     * @param memory            the memory consumed by the pre-processing procedure
      */
     private void buildPreProcessingInformation(ArrayList<Integer> rowsRemoved, ArrayList<Integer> colsRemoved, boolean[][] newInputIntMatrix, long timePP, StringBuilder sb, long memory) {
         sb.append("\t\t\tPre-Elaboration").append("\n");
@@ -431,9 +474,9 @@ public class MinimalHittingSetFacade {
     /**
      * Method to print the input matrix information on the standard output.
      *
-     * @param rows
-     * @param cols
-     * @param name
+     * @param rows the number of rows
+     * @param cols the number of columns
+     * @param name the name of the matrix
      */
     private void printInputMatrixInformation(int rows, int cols, String name) {
         System.out.println(DOUBLE_LINE);
@@ -442,25 +485,16 @@ public class MinimalHittingSetFacade {
     }
 
     /**
-     * Method to print information on the standard output about the outputs of MBase procedure.
+     * Method to generate the output matrix with the correct number of the initial input matrix columns
+     * and print the matrix.
      *
-     * @param matrix
-     * @param initialCols
-     * @param colsRemoved
+     * @param matrix      the matrix to print
+     * @param initialCols the number of columns of the initial input matrix
+     * @param colsRemoved the list of columns removed by pre-processing, if executed
      */
-    private void printOutputInformation(boolean[][] matrix, int initialCols, ArrayList<Integer> colsRemoved) {
+    private void checkPrintOutputMatrix(boolean[][] matrix, int initialCols, ArrayList<Integer> colsRemoved) {
         System.out.println(LINE);
-        checkPrintOutputMatrix(matrix, colsRemoved, initialCols);
-    }
 
-    /**
-     * Method to build the matrix with the correct number of the initial input matrix columns.
-     *
-     * @param matrix
-     * @param colsRemoved
-     * @param initialCols
-     */
-    private void checkPrintOutputMatrix(boolean[][] matrix, ArrayList<Integer> colsRemoved, int initialCols) {
         if (matrix.length > STD_OUT_MHS_LIMIT) {
             System.out.println("MHS matrix too large to print on standard output. Check the report file, please.");
             return;
@@ -481,23 +515,21 @@ public class MinimalHittingSetFacade {
         }
 
         printBoolMatrix(outputMatrix, "Output Matrix:");
-
     }
 
     /**
      * Method to print the matrix on the standard output.
      *
-     * @param boolMatrix
+     * @param boolMatrix the matrix to print
+     * @param s          a descriptive string to print before of the matrix (e.g. "Input Matrix:"), it can be an empty string ""
      */
     private void printBoolMatrix(boolean[][] boolMatrix, String s) {
-        if (verbose) {
-            System.out.println(s);
-            for (boolean[] intCol : boolMatrix) {
-                for (int j = 0; j < boolMatrix[0].length; j++) {
-                    System.out.print(intCol[j] ? 1 + " " : 0 + " "); // Print each row of the matrix
-                }
-                System.out.println("-"); // Print the end of a row
+        System.out.println(s);
+        for (boolean[] intCol : boolMatrix) {
+            for (int j = 0; j < boolMatrix[0].length; j++) {
+                System.out.print(intCol[j] ? 1 + " " : 0 + " "); // Print each row of the matrix
             }
+            System.out.println("-"); // Print the end of a row
         }
     }
 
@@ -507,8 +539,7 @@ public class MinimalHittingSetFacade {
      * @param msg
      */
     private long printUsedMemory(String msg, Runtime runtime) {
-        long memoryAfter = 0;
-        memoryAfter = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
+        long memoryAfter = bytesToMegaBytes(runtime.totalMemory() - runtime.freeMemory());
 
         if (verbose)
             System.out.println(msg + memoryAfter + "MB");

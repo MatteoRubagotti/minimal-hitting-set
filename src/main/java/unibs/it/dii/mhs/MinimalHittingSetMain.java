@@ -6,6 +6,9 @@ import unibs.it.dii.mhs.builder.Director;
 import unibs.it.dii.mhs.builder.MinimalHittingSetFacadeBuilder;
 import unibs.it.dii.utility.*;
 
+/**
+ *
+ */
 public class MinimalHittingSetMain {
 
     public static void main(String[] args) throws Exception {
@@ -38,21 +41,30 @@ public class MinimalHittingSetMain {
         if (invalidArgumentsCondition(arguments)) {
             System.err.println("Please choose only one argument between -in or -dir");
             jc.usage();
-            System.exit(-1);
+            System.exit(200);
         }
 
         // -----------------------------------------------------------------------------
+
         Director director = new Director(arguments);
         MinimalHittingSetFacadeBuilder builder = new MinimalHittingSetFacadeBuilder();
+
         director.buildMinimalHittingSetFacade(builder);
 
         MinimalHittingSetFacade minimalHittingSet = builder.getMHS();
 
         minimalHittingSet.find();
+
         // -----------------------------------------------------------------------------
 
     }
 
+    /**
+     * Method to check if only one mode is selected between manual or automatic.
+     *
+     * @param args the arguments parsed by JCommander
+     * @return true if the arguments passed are invalid
+     */
     private boolean invalidArgumentsCondition(Args args) {
         return (args.isManualMode() && args.isAutomaticMode()) || (!args.isManualMode() && !args.isAutomaticMode());
     }

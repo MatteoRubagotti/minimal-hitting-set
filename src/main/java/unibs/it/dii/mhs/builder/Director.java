@@ -2,8 +2,6 @@ package unibs.it.dii.mhs.builder;
 
 import unibs.it.dii.utility.Args;
 
-import java.util.LinkedList;
-
 public class Director {
 
     private static final int MILLISECONDS = 1000;
@@ -14,6 +12,10 @@ public class Director {
         this.arguments = arguments;
     }
 
+    /**
+     * Method to build the MinimalHittingSetFacade object.
+     * @param builder the interface of the builder that allows to create the target object
+     */
     public void buildMinimalHittingSetFacade(FacadeBuilder builder) {
         builder.setPreProcessing(arguments.isPreProcessing());
         builder.setVerbosity(arguments.isVerbose());
@@ -25,7 +27,7 @@ public class Director {
     }
 
     /**
-     * Method to transform the time unit from seconds to milliseconds.
+     * Method to change the time unit from seconds to milliseconds.
      *
      * @param time a time value in seconds
      * @return the time value in milliseconds

@@ -43,6 +43,12 @@ public class OutputFileWriter {
         return outputFile;
     }
 
+    /**
+     * Write the strings contained inside the StringBuilder.
+     *
+     * @param sb the StringBuilder
+     * @throws IOException
+     */
     public void writeOutputFile(StringBuilder sb) throws IOException {
         final FileWriter fw = new FileWriter(outputFile.getAbsoluteFile(), true);
         // Start write report information
@@ -51,6 +57,14 @@ public class OutputFileWriter {
         fw.close();
     }
 
+    /**
+     * Write the output matrix with the correct number of columns on the output file.
+     *
+     * @param matrix      the matrix to write with relative indexing
+     * @param colsRemoved the list of columns removed
+     * @param initialCols the number of initial input matrix columns
+     * @throws IOException
+     */
     public void writeOutputMatrix(boolean[][] matrix, ArrayList<Integer> colsRemoved, int initialCols) throws IOException {
         final FileWriter fw = new FileWriter(outputFile.getAbsoluteFile(), true);
         StringBuilder sb = new StringBuilder();

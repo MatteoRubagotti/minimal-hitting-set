@@ -6,9 +6,10 @@ public class OutputMatrixBuilder {
 
     /**
      * Method to create the output matrix containing the all MHS found.
-     * @param mhsList
-     * @param cols
-     * @return
+     *
+     * @param mhsList the list of MHS found
+     * @param cols    the number of relative columns (i.e. K ≤ M)
+     * @return the boolean output matrix
      */
     public boolean[][] getMHSBoolOutputMatrix(ArrayList<boolean[]> mhsList, int cols) {
         boolean[][] outputMatrix = new boolean[mhsList.size()][cols]; // H x K, where H is the number of MHS found and K <= M
@@ -20,6 +21,7 @@ public class OutputMatrixBuilder {
             }
             row++;
         }
+
         return outputMatrix;
     }
 }

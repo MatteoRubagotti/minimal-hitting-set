@@ -1,4 +1,4 @@
-package unibs.it.dii.mhs;
+package unibs.it.dii.mhs.model;
 
 import com.google.common.primitives.Booleans;
 import unibs.it.dii.mhs.model.Matrix;
@@ -12,7 +12,7 @@ import static java.lang.Integer.min;
 import static unibs.it.dii.mhs.MinimalHittingSetFacade.bytesToMegaBytes;
 
 /**
- *
+ * This class implements the MBase procedure and handle the problems with the execution (i.e. out of time/memory)
  */
 public class MinimalHittingSetSolver {
 
@@ -71,12 +71,12 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * Method to compute the solution of MHS problem.
+     * Method to compute the solution of MHS problem in matrix form.
      *
-     * @param matrix
-     * @param timeout
-     * @param outputFileWriter
-     * @return The output matrix of the all MHS found
+     * @param matrix           the input matrix
+     * @param timeout          the time limit to execute the MBase procedure
+     * @param outputFileWriter the object to write on output file
+     * @return a matrix of the all MHS found
      * @throws Exception
      */
     public Matrix execute(Matrix matrix, long timeout, OutputFileWriter outputFileWriter) throws Exception {
@@ -87,8 +87,6 @@ public class MinimalHittingSetSolver {
         final Matrix mhsMatrix = new Matrix();
         // Object to create the matrix (boolean[][]) from an ArrayList
         final OutputMatrixBuilder outputMatrixBuilder = new OutputMatrixBuilder();
-        // Object to build the information to write in the output file
-        StringBuilder sbHeaderMBase = new StringBuilder();
 
         boolean[][] inputBoolMatrix = matrix.getBoolMatrix();
         // Matrix error to handle in MHSFacade otherwise it will be set to the output matrix
@@ -151,11 +149,11 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * MBase procedure
+     * This method implement the MBase algorithm.
      *
-     * @param boolMatrix The input matrix from benchmark file (e.g. ####.####.matrix)
-     * @param timeout    The maximum time limit
-     * @return The list of MHS found
+     * @param boolMatrix the input boolean matrix
+     * @param timeout    the maximum time limit
+     * @return the list of MHS found
      */
     private ArrayList<boolean[]> solve(boolean[][] boolMatrix, long timeout) throws Exception {
         Runtime runtime = Runtime.getRuntime();
@@ -179,10 +177,10 @@ public class MinimalHittingSetSolver {
 
             if (debug) {
                 System.out.println(LINE);
-                System.out.println("Successor: " + getSucc(getMax(e), cols));
+                System.out.println("Successor: " + getSucc(getLast(e), cols));
             }
 
-            for (int i = getSucc(getMax(e), cols); i < cols && (System.currentTimeMillis() - startTime) <= timeout; i++) {
+            for (int i = getSucc(getLast(e), cols); i < cols && (System.currentTimeMillis() - startTime) <= timeout; i++) {
                 try {
                     boolean[] newE = Arrays.copyOf(e, e.length);
                     newE[i] = true;
@@ -268,6 +266,7 @@ public class MinimalHittingSetSolver {
     }
 
     /**
+     * Print information about MBase execution.
      *
      * @param runtime
      */
@@ -289,6 +288,8 @@ public class MinimalHittingSetSolver {
     }
 
     /**
+     * Print the memory consumed.
+     *
      * @param runtime
      * @param s
      */
@@ -298,25 +299,11 @@ public class MinimalHittingSetSolver {
     }
 
     /**
-     * Method to print the matrix (debug purpose)
+     * Method to compute the submatrix of a subset of elements.
      *
-     * @param matrix
-     */
-    private void printBoolMatrix(boolean[][] matrix) {
-        for (int i = 0; i < matrix.length; i++) {
-            for (int j = 0; j < matrix[0].length; j++) {
-                System.out.print(matrix[i][j]);
-            }
-            System.out.println(" -");
-        }
-    }
-
-    /**
-     * Method to compute the submatrix.
-     *
-     * @param e
-     * @param matrix
-     * @return
+     * @param e      the subset of lexicographical elements
+     * @param matrix the matrix from which take the submatrix
+     * @return a submatrix containing the only lexicographical elements
      * @throws Exception
      */
     private SubMatrix getSubMatrix(boolean[] e, boolean[][] matrix) throws Exception {
@@ -344,8 +331,8 @@ public class MinimalHittingSetSolver {
     /**
      * Method to compute the number of active lexicographical elements in the element e[].
      *
-     * @param e
-     * @return
+     * @param e the array representing a subset of lexicographical elements
+     * @return the number of lexicographical elements contained
      */
     private int getNumberOfElements(boolean[] e) {
         return Booleans.countTrue(e);
@@ -354,8 +341,8 @@ public class MinimalHittingSetSolver {
     /**
      * Method to scan the representative vector and get the scalar result.
      *
-     * @param rv       The representative vector
-     * @param elements The lexicographical elements considered
+     * @param rv       the representative vector
+     * @param elements the lexicographical elements considered
      * @return MHS = 2, OK = 1, KO = 0
      */
     private int checkModule(int[] rv, ArrayList<Integer> elements) throws Exception {
@@ -416,8 +403,8 @@ public class MinimalHittingSetSolver {
     /**
      * Method to compute a representative vector.
      *
-     * @param subMatrix
-     * @return
+     * @param subMatrix the submatrix representing the subset of lexicographical elements
+     * @return a representative vector which size equals to the number of submatrix rows
      * @throws Exception
      */
     private int[] getRepresentativeVector(SubMatrix subMatrix) throws Exception {
@@ -476,28 +463,28 @@ public class MinimalHittingSetSolver {
     /**
      * Method to get the successor of the element considered.
      *
-     * @param element
-     * @param lengthM
-     * @return
+     * @param elementIndex the index of the element
+     * @param numberOfCols the number of columns available (i.e. number of lexicographical elements)
+     * @return the successor (i.e. succ()) of the element considered
      */
-    private int getSucc(int element, int lengthM) {
-        return min(element + 1, lengthM - 1);
+    private int getSucc(int elementIndex, int numberOfCols) {
+        return min(elementIndex + 1, numberOfCols - 1);
     }
 
     /**
-     * Method to compute the max of the lexicographical element passed.
+     * Method to compute the last active element inside the subset of lexicographical elements.
      *
-     * @param e
-     * @return
+     * @param e the subset of lexicographical elements
+     * @return the index of the last active element inside e[] (i.e. max())
      */
-    private int getMax(boolean[] e) {
-        int max = e.length;
+    private int getLast(boolean[] e) {
+        int last = e.length;
 
         do {
-            max--;
-        } while ((max > -1) && (!e[max]));
+            last--;
+        } while ((last > -1) && (!e[last]));
 
-        return max;
+        return last;
     }
 
 }

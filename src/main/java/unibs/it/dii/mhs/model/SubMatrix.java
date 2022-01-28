@@ -2,6 +2,10 @@ package unibs.it.dii.mhs.model;
 
 import java.util.ArrayList;
 
+/**
+ * This class represents a submatrix used to create the representative vector
+ * for each subset of lexicographical elements.
+ */
 public class SubMatrix extends Matrix {
     private ArrayList<Integer> elements;
 
