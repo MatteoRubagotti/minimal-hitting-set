@@ -13,16 +13,16 @@ public class OutputDirectoryValidator implements IParameterValidator {
     public void validate(String name, String value) throws ParameterException {
         Path path = Paths.get(value);
 
-        if (!path.isAbsolute() || !Files.isDirectory(path)) {
-            throw new ParameterException("Check the absolute path for the output file (-out)");
-        }
-
         if (!path.toFile().exists()) {
             try {
                 Files.createDirectories(path);
             } catch (IOException e) {
                 throw new ParameterException("Impossible to create the directory: " + path.toFile());
             }
+        }
+
+        if (!path.isAbsolute() || !Files.isDirectory(path)) {
+            throw new ParameterException("Check the absolute path for the output file (-out)");
         }
 
     }

@@ -1,6 +1,7 @@
 package unibs.it.dii.mhs.model;
 
 import com.google.common.primitives.Booleans;
+import unibs.it.dii.mhs.MinimalHittingSetFacade;
 import unibs.it.dii.mhs.model.Matrix;
 import unibs.it.dii.mhs.model.SubMatrix;
 import unibs.it.dii.utility.OutputFileWriter;
@@ -412,33 +413,36 @@ public class MinimalHittingSetSolver {
         // RV has the submatrix number of rows (also of the input matrix)
         int[] rv = new int[boolSubMatrix.length];
 
-        for (int j = 0; j < boolSubMatrix[0].length; j++) { // j = cols
-            for (int i = 0; i < boolSubMatrix.length; i++) { // i = rows
-                // Check the elements considered in the submatrix
-                if (!subMatrix.getElements().isEmpty()) {
-                    if (rv[i] == -1 && boolSubMatrix[i][j]) {
-                        rv[i] = -1; // x-value (i.e. the i-th set intersect at least 2 elements of submatrix)
-                        continue;
-                    }
+        if (debug)
+            MinimalHittingSetFacade.printBoolMatrix(boolSubMatrix, "Submatrix: ");
 
-                    if (rv[i] == 0 && boolSubMatrix[i][j]) {
-                        rv[i] = subMatrix.getElements().get(j) + 1; // Store the "real" value of the column
-                        continue;
-                    }
+            for (int j = 0; j < boolSubMatrix[0].length; j++) { // j = cols
+                for (int i = 0; i < boolSubMatrix.length; i++) { // i = rows
+                    // Check the elements considered in the submatrix
+                    if (!subMatrix.getElements().isEmpty()) {
+                        if (rv[i] == -1 && boolSubMatrix[i][j]) {
+                            rv[i] = -1; // x-value (i.e. the i-th set intersect at least 2 elements of submatrix)
+                            continue;
+                        }
 
-                    if (rv[i] != (subMatrix.getElements().get(j) + 1) && boolSubMatrix[i][j]) {
-                        rv[i] = -1; // x-value (i.e. the i-th set intersect at least 2 elements of submatrix)
+                        if (rv[i] == 0 && boolSubMatrix[i][j]) {
+                            rv[i] = subMatrix.getElements().get(j) + 1; // Store the "real" value of the column
+                            continue;
+                        }
+
+                        if (rv[i] != (subMatrix.getElements().get(j) + 1) && boolSubMatrix[i][j]) {
+                            rv[i] = -1; // x-value (i.e. the i-th set intersect at least 2 elements of submatrix)
 //                        continue;
-                    }
+                        }
 
 //                    // Can be removed
 //                    if (rv[i] == (subMatrix.getElements().get(j) + 1) && boolSubMatrix[i][j]) {
 //                        rv[i] = subMatrix.getElements().get(j) + 1; //
 //                    }
-                }
+                    }
 
+                }
             }
-        }
 
         return rv;
     }

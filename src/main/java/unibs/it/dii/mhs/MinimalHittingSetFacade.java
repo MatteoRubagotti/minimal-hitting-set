@@ -207,7 +207,7 @@ public class MinimalHittingSetFacade {
 
             outputFileWriter.writeOutputFile(buildOutputMatrixHeader(informationMBase));
 
-            if (errorWithOutputMatrix(outputMatrix)) {
+            if (errorWithOutputMatrix(outputMatrix, solver.isOutOfMemory(), solver.isOutOfTime())) {
                 System.err.println("Impossible to get output matrix (e.g. empty)");
                 outputFileWriter.writeOutputFile(new StringBuilder("Impossible to get output matrix (e.g. empty)\n"));
             } else {
@@ -219,7 +219,7 @@ public class MinimalHittingSetFacade {
                 }
             }
 
-            if (verbose && !errorWithOutputMatrix(outputMatrix)) {
+            if (verbose && !errorWithOutputMatrix(outputMatrix, solver.isOutOfMemory(), solver.isOutOfTime())) {
                 try {
                     checkPrintOutputMatrix(outputMatrix.getBoolMatrix(), initialCols, colsRemoved);
                 } catch (OutOfMemoryError me) {
@@ -246,10 +246,12 @@ public class MinimalHittingSetFacade {
      * {@link MinimalHittingSetSolver#execute(Matrix, long, OutputFileWriter)} execute } method.
      *
      * @param outputMatrix the output matrix
+     * @param outOfMemory
+     * @param outOfTime
      * @return true if the output matrix is empty or some errors occurred
      */
-    private boolean errorWithOutputMatrix(Matrix outputMatrix) {
-        return outputMatrix.getBoolMatrix()[0].length == 1;
+    private boolean errorWithOutputMatrix(Matrix outputMatrix, boolean outOfMemory, boolean outOfTime) {
+        return (outputMatrix.getBoolMatrix()[0].length == 1 && (outOfMemory || outOfTime));
     }
 
     /**
@@ -523,7 +525,7 @@ public class MinimalHittingSetFacade {
      * @param boolMatrix the matrix to print
      * @param s          a descriptive string to print before of the matrix (e.g. "Input Matrix:"), it can be an empty string ""
      */
-    private void printBoolMatrix(boolean[][] boolMatrix, String s) {
+    public static void printBoolMatrix(boolean[][] boolMatrix, String s) {
         System.out.println(s);
         for (boolean[] intCol : boolMatrix) {
             for (int j = 0; j < boolMatrix[0].length; j++) {
